@@ -29,12 +29,18 @@ Vizzy solves the problem that full NixOS derivation graphs (100k+ nodes) are too
 ```bash
 git clone <repo-url>
 cd vizzy
-nix develop  # Provides Python, PostgreSQL, Graphviz
+nix develop  # Provides Python 3.13, Graphviz, and activates a venv
 ```
 
-### 2. Database Setup
+### 2. Install dependencies
 
-Create the database and initialize the schema:
+```bash
+pip install -e ".[dev]"
+```
+
+### 3. Database Setup
+
+Requires PostgreSQL to be running on your system. Create the database and initialize the schema:
 
 ```bash
 createdb vizzy
@@ -48,7 +54,7 @@ The schema creates:
 - `analysis` - Cached analysis results
 - Trigram index for fuzzy search
 
-### 3. Environment Configuration
+### 4. Environment Configuration
 
 Copy the example environment file and configure:
 
@@ -71,10 +77,9 @@ VIZZY_PORT=8000
 VIZZY_DEBUG=true
 ```
 
-### 4. Install and Run
+### 5. Run
 
 ```bash
-pip install -e ".[dev]"
 uvicorn vizzy.main:app --reload
 ```
 
