@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}{{ label }} Flow - {{ import_info.name }}{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/analyze/duplicates/{{ import_info.id }}" class="hover:text-slate-700">Duplicates</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/analyze/compare/{{ import_info.id }}/{{ label }}" class="hover:text-slate-700">{{ label }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Flow Diagram</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h1 class="text-2xl font-bold">{{ label }}</h1>
+            <p class="text-slate-600">{{ variant_count }} variants - showing why each exists</p>
+        </div>
+        <div class="flex gap-4 text-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded" style="background: #10b981"></div>
+                <span>Package variants</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded" style="background: #3b82f6"></div>
+                <span>Direct dependents</span>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-sm text-slate-500 mb-4">
+        Shows what directly uses each variant. Follow the chain to see why each variant exists.
+    </p>
+
+    <div id="sankey-diagram" style="width: 100%; height: 600px;"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sankeyData = {{ sankey_data | safe }};
+
+    if (!sankeyData.nodes || !sankeyData.nodes.label || sankeyData.nodes.label.length === 0) {
+        document.getElementById('sankey-diagram').innerHTML =
+            '<p class="text-slate-500 text-center py-12">No flow data available for this package.</p>';
+        return;
+    }
+
+    const data = [{
+        type: "sankey",
+        orientation: "h",
+        node: {
+            pad: 20,
+            thickness: 20,
+            line: {
+                color: "white",
+                width: 1
+            },
+            label: sankeyData.nodes.label,
+            color: sankeyData.nodes.color,
+            hovertemplate: '%{label}<extra></extra>'
+        },
+        link: {
+            source: sankeyData.links.source,
+            target: sankeyData.links.target,
+            value: sankeyData.links.value,
+            color: 'rgba(100, 100, 100, 0.2)',
+            hovertemplate: '%{source.label} → %{target.label}<extra></extra>'
+        }
+    }];
+
+    const layout = {
+        font: {
+            size: 12,
+            family: 'ui-sans-serif, system-ui, sans-serif'
+        },
+        margin: {
+            l: 10,
+            r: 10,
+            t: 10,
+            b: 10
+        },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent'
+    };
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        displaylogo: false
+    };
+
+    Plotly.newPlot('sankey-diagram', data, layout, config);
+});
+</script>
+{% endblock %}

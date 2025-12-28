@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Vizzy{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        .graph-container {
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+        }
+        .graph-container svg {
+            max-width: none;
+        }
+        .graph-container svg a:hover polygon,
+        .graph-container svg a:hover ellipse {
+            stroke: #1e293b;
+            stroke-width: 3px;
+        }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+    <nav class="bg-slate-800 text-white px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="/" class="text-xl font-bold">Vizzy</a>
+            {% block nav_extra %}{% endblock %}
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

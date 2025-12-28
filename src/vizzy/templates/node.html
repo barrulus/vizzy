@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ node.label }} - Vizzy{% endblock %}
+
+{% block nav_extra %}
+<div class="flex items-center space-x-4">
+    <span class="text-slate-400">{{ import_info.name }}</span>
+    <input type="search"
+           placeholder="Search packages..."
+           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Sidebar -->
+    <div class="lg:col-span-1 space-y-4">
+        <!-- Breadcrumb -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <nav class="text-sm">
+                <a href="/" class="text-blue-600 hover:underline">Home</a>
+                <span class="mx-2 text-slate-400">/</span>
+                <a href="/explore/{{ import_info.id }}" class="text-blue-600 hover:underline">{{ import_info.name }}</a>
+                <span class="mx-2 text-slate-400">/</span>
+                <a href="/graph/cluster/{{ import_info.id }}/{{ node.package_type }}" class="text-blue-600 hover:underline">{{ node.package_type }}</a>
+                <span class="mx-2 text-slate-400">/</span>
+                <span class="text-slate-600 truncate block" title="{{ node.label }}">{{ node.label[:30] }}{% if node.label|length > 30 %}...{% endif %}</span>
+            </nav>
+        </div>
+
+        <!-- Node Info -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Node Details</h3>
+            <dl class="space-y-2 text-sm">
+                <div>
+                    <dt class="text-slate-500">Name</dt>
+                    <dd class="font-medium break-all">{{ node.label }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Type</dt>
+                    <dd class="font-medium">{{ node.package_type }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Hash</dt>
+                    <dd class="font-mono text-xs break-all">{{ node.drv_hash }}</dd>
+                </div>
+                {% if node.depth is not none %}
+                <div>
+                    <dt class="text-slate-500">Depth</dt>
+                    <dd class="font-medium">{{ node.depth }}</dd>
+                </div>
+                {% endif %}
+                {% if node.closure_size is not none %}
+                <div>
+                    <dt class="text-slate-500">Closure Size</dt>
+                    <dd class="font-medium">{{ node.closure_size }} dependencies</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Actions -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Analysis</h3>
+            <ul class="space-y-2 text-sm">
+                <li>
+                    <a href="/visual/{{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Visual Explorer
+                    </a>
+                </li>
+                <li>
+                    <a href="/impact/{{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        View Full Impact
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze/path/{{ import_info.id }}?source={{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Find Path From Here
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Dependencies -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Dependencies ({{ dependencies | length }})</h3>
+            <ul class="space-y-1 text-sm max-h-48 overflow-y-auto">
+                {% for dep in dependencies[:50] %}
+                <li>
+                    <a href="/graph/node/{{ dep.id }}"
+                       class="block p-1 rounded hover:bg-slate-50 truncate text-blue-600 hover:underline"
+                       title="{{ dep.label }}">
+                        {{ dep.label }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% if dependencies | length > 50 %}
+                <li class="text-slate-400 p-1">... and {{ dependencies | length - 50 }} more</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Dependents -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Dependents ({{ dependents | length }})</h3>
+            <ul class="space-y-1 text-sm max-h-48 overflow-y-auto">
+                {% for dep in dependents[:50] %}
+                <li>
+                    <a href="/graph/node/{{ dep.id }}"
+                       class="block p-1 rounded hover:bg-slate-50 truncate text-blue-600 hover:underline"
+                       title="{{ dep.label }}">
+                        {{ dep.label }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% if dependents | length > 50 %}
+                <li class="text-slate-400 p-1">... and {{ dependents | length - 50 }} more</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Search Results -->
+        <div id="search-results"></div>
+    </div>
+
+    <!-- Main Graph -->
+    <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold mb-4">{{ node.label }}</h2>
+        <p class="text-sm text-slate-500 mb-4">
+            Showing direct dependencies (right) and dependents (left).
+            Click a node to navigate.
+        </p>
+        <div class="graph-container border border-slate-200 rounded">
+            {{ svg | safe }}
+        </div>
+    </div>
+</div>
+{% endblock %}

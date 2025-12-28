@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Module Packages - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+<div class="flex items-center space-x-4">
+    <span class="text-slate-400">{{ import_info.name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Module Packages</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h1 class="text-2xl font-bold mb-2">Module Packages</h1>
+    <p class="text-slate-600">
+        Packages added by NixOS modules (services, programs, desktop environments) - not explicitly in your <code class="bg-slate-100 px-1 rounded">environment.systemPackages</code>.
+    </p>
+    {% if not error %}
+    <p class="text-sm text-slate-500 mt-2">
+        {{ packages|length }} module-added packages out of {{ total_system }} total in system-path.
+    </p>
+    {% endif %}
+</div>
+
+{% if error %}
+<div class="bg-red-50 border border-red-200 rounded-lg p-6">
+    <p class="text-red-700">{{ error }}</p>
+</div>
+{% elif packages %}
+<div class="bg-white rounded-lg shadow p-6">
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Packages from modules ({{ packages|length }})</h2>
+        <p class="text-sm text-slate-500">Click to see what else each package depends on</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {% for pkg in packages %}
+        <a href="/graph/node/{{ pkg.id }}"
+           class="flex items-center justify-between p-3 rounded border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition">
+            <div>
+                <div class="font-medium">{{ pkg.label }}</div>
+                <div class="text-xs text-slate-500">{{ pkg.package_type or 'unknown' }}</div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+    <h3 class="font-semibold text-blue-800 mb-2">How to find what adds these</h3>
+    <p class="text-sm text-blue-700 mb-3">
+        These packages are added by NixOS modules you've enabled. To find which module adds a specific package:
+    </p>
+    <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
+        <li>Search your config for the package name: <code class="bg-blue-100 px-1 rounded">grep -r "orca" ~/nixos-config</code></li>
+        <li>Check related services: <code class="bg-blue-100 px-1 rounded">grep -r "gnome\|accessibility" ~/nixos-config</code></li>
+        <li>Look in nixpkgs for which module defines it: search <code class="bg-blue-100 px-1 rounded">nixos/modules/</code> on GitHub</li>
+    </ol>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-6">
+    <p class="text-slate-500">No module-added packages found (or all packages are explicitly defined).</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{{ import_info.name }} - Vizzy{% endblock %}
+
+{% block nav_extra %}
+<div class="flex items-center space-x-4">
+    <span class="text-slate-400">{{ import_info.name }}</span>
+    <input type="search"
+           placeholder="Search packages..."
+           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Sidebar -->
+    <div class="lg:col-span-1 space-y-4">
+        <!-- Breadcrumb -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <nav class="text-sm">
+                <a href="/" class="text-blue-600 hover:underline">Home</a>
+                <span class="mx-2 text-slate-400">/</span>
+                <span class="text-slate-600">{{ import_info.name }}</span>
+            </nav>
+        </div>
+
+        <!-- Stats -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Overview</h3>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-slate-500">Nodes</dt>
+                    <dd class="font-medium">{{ import_info.node_count }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-slate-500">Edges</dt>
+                    <dd class="font-medium">{{ import_info.edge_count }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Views -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Views</h3>
+            <ul class="space-y-2 text-sm">
+                <li>
+                    <a href="/defined/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Defined Packages
+                    </a>
+                </li>
+                <li>
+                    <a href="/module-packages/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Module Packages
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Analysis Tools -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Analysis</h3>
+            <ul class="space-y-2 text-sm">
+                <li>
+                    <a href="/analyze/duplicates/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Duplicate Derivations
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze/path/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Path Finder
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Clusters List -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Package Types</h3>
+            <ul class="space-y-1 text-sm">
+                {% for cluster in clusters %}
+                <li>
+                    <a href="/graph/cluster/{{ import_info.id }}/{{ cluster.package_type }}"
+                       class="flex justify-between items-center p-2 rounded hover:bg-slate-50">
+                        <span>{{ cluster.package_type }}</span>
+                        <span class="text-slate-400">{{ cluster.node_count }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Search Results -->
+        <div id="search-results"></div>
+    </div>
+
+    <!-- Main Graph -->
+    <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
+        <h2 class="text-lg font-semibold mb-4">Package Type Overview</h2>
+        <p class="text-sm text-slate-500 mb-4">Click a cluster to explore packages of that type.</p>
+        <div class="graph-container border border-slate-200 rounded">
+            {{ svg | safe }}
+        </div>
+    </div>
+</div>
+{% endblock %}

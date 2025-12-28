@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Compare {{ comparison.label }} - {{ import_info.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/analyze/duplicates/{{ import_info.id }}" class="hover:text-slate-700">Duplicates</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">{{ comparison.label }}</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold mb-2">{{ comparison.label }}</h1>
+            <p class="text-slate-600">
+                {{ comparison.count }} different derivations of this package
+            </p>
+        </div>
+        <a href="/analyze/sankey/{{ import_info.id }}/{{ comparison.label }}"
+           class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            View Flow Diagram
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-{{ comparison.count }} gap-6">
+        {% for variant in comparison.variants %}
+        <div class="border border-slate-200 rounded-lg p-4 {% if variant.is_build_time %}bg-amber-50 border-amber-200{% else %}bg-green-50 border-green-200{% endif %}">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-mono text-slate-500">{{ variant.hash }}</span>
+                <span class="text-xs px-2 py-1 rounded {% if variant.is_build_time %}bg-amber-200 text-amber-800{% else %}bg-green-200 text-green-800{% endif %}">
+                    {% if variant.is_build_time %}Build-time{% else %}Runtime{% endif %}
+                </span>
+            </div>
+
+            {% if variant.root_causes %}
+            <div class="mb-4 p-3 bg-white rounded border border-slate-300">
+                <h4 class="text-sm font-semibold text-slate-800 mb-2">Why this exists:</h4>
+                <ul class="text-sm text-slate-700 space-y-1">
+                    {% for cause in variant.root_causes %}
+                    <li class="truncate font-medium">{{ cause }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="mb-4">
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Direct dependents:</h4>
+                <ul class="text-sm text-slate-600 space-y-1">
+                    {% for dep in variant.used_by %}
+                    <li class="truncate">{{ dep }}</li>
+                    {% else %}
+                    <li class="text-slate-400 italic">No direct dependents</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {% if variant.build_deps %}
+            <div class="mb-4">
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Build dependencies:</h4>
+                <ul class="text-xs text-slate-500 space-y-1 max-h-32 overflow-auto">
+                    {% for dep in variant.build_deps[:8] %}
+                    <li class="truncate">{{ dep }}</li>
+                    {% endfor %}
+                    {% if variant.build_deps|length > 8 %}
+                    <li class="text-slate-400">... and {{ variant.build_deps|length - 8 }} more</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if variant.runtime_deps %}
+            <div>
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Runtime dependencies:</h4>
+                <ul class="text-xs text-slate-500 space-y-1 max-h-32 overflow-auto">
+                    {% for dep in variant.runtime_deps[:8] %}
+                    <li class="truncate">{{ dep }}</li>
+                    {% endfor %}
+                    {% if variant.runtime_deps|length > 8 %}
+                    <li class="text-slate-400">... and {{ variant.runtime_deps|length - 8 }} more</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="mt-4 pt-3 border-t border-slate-200">
+                <a href="/graph/node/{{ variant.node_id }}"
+                   class="text-sm text-blue-600 hover:text-blue-800">
+                    View node details &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

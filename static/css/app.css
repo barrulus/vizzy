@@ -1,0 +1,34 @@
+/* Additional styles for Vizzy */
+
+/* Graph container scrolling */
+.graph-container {
+    overflow: auto;
+    max-height: calc(100vh - 200px);
+    cursor: grab;
+}
+
+.graph-container:active {
+    cursor: grabbing;
+}
+
+/* SVG link hover states */
+.graph-container svg a polygon,
+.graph-container svg a ellipse {
+    transition: stroke-width 0.15s ease;
+}
+
+.graph-container svg a:hover polygon,
+.graph-container svg a:hover ellipse {
+    stroke-width: 3px !important;
+}
+
+/* Smooth transitions */
+a {
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Search input focus */
+input[type="search"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Path Finder - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+<form action="/search" method="GET" class="flex items-center gap-2">
+    <input type="hidden" name="import_id" value="{{ import_info.id }}">
+    <input type="text" name="q" placeholder="Search packages..."
+           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Path Finder</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h1 class="text-2xl font-bold mb-2">Path Finder</h1>
+    <p class="text-slate-600 mb-6">
+        Find the dependency path between two packages. Answer: "Why does X depend on Y?"
+    </p>
+
+    <form action="/analyze/path/{{ import_info.id }}" method="GET" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Source Node ID</label>
+                <input type="number" name="source" value="{{ source_id or '' }}" required
+                       placeholder="e.g., 1234"
+                       class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-slate-500 mt-1">Find node IDs by searching packages</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Target Node ID</label>
+                <input type="number" name="target" value="{{ target_id or '' }}" required
+                       placeholder="e.g., 5678"
+                       class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+        <button type="submit"
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+            Find Path
+        </button>
+    </form>
+</div>
+
+{% if path_result %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-semibold mb-4">
+        {% if path_result.found %}
+        Path Found ({{ path_result.length }} steps)
+        {% else %}
+        No Path Found
+        {% endif %}
+    </h2>
+
+    {% if path_result.found %}
+    <div class="flex items-center gap-2 flex-wrap">
+        {% for node in path_result.path %}
+        <a href="/graph/node/{{ node.id }}"
+           class="px-3 py-2 bg-slate-100 rounded hover:bg-slate-200 transition text-sm">
+            {{ node.label }}
+        </a>
+        {% if not loop.last %}
+        <span class="text-slate-400">&rarr;</span>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-slate-500">
+        No dependency path exists from
+        <strong>{{ path_result.source.label }}</strong> to
+        <strong>{{ path_result.target.label }}</strong>.
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

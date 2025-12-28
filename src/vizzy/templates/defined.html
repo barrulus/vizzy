@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Defined Packages - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+<div class="flex items-center space-x-4">
+    <span class="text-slate-400">{{ import_info.name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Defined Packages</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h1 class="text-2xl font-bold mb-2">Defined Packages</h1>
+    <p class="text-slate-600">
+        {{ total }} packages explicitly defined in <code class="bg-slate-100 px-1 rounded">environment.systemPackages</code>
+    </p>
+    <p class="text-sm text-slate-500 mt-2">
+        These are the packages you asked for. Everything else ({{ import_info.node_count - matched|length }} nodes) are dependencies.
+    </p>
+</div>
+
+{% if matched %}
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Matched Packages ({{ matched|length }})</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {% for item in matched %}
+        <a href="/graph/node/{{ item.node.id }}"
+           class="flex items-center justify-between p-3 rounded border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition">
+            <div>
+                <div class="font-medium">{{ item.name }}</div>
+                <div class="text-xs text-slate-500">{{ item.node.package_type or 'unknown' }}</div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if unmatched %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4 text-amber-600">Unmatched Packages ({{ unmatched|length }})</h2>
+    <p class="text-sm text-slate-500 mb-4">
+        These packages are defined but couldn't be matched to nodes in the graph.
+        They may have different names in the derivation or be provided via other means.
+    </p>
+    <div class="flex flex-wrap gap-2">
+        {% for name in unmatched %}
+        <span class="px-2 py-1 bg-amber-50 text-amber-700 rounded text-sm">{{ name }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if not matched and not unmatched %}
+<div class="bg-white rounded-lg shadow p-6">
+    <p class="text-slate-500">
+        Could not retrieve system packages. Make sure the nix configuration is accessible and evaluates successfully.
+    </p>
+</div>
+{% endif %}
+{% endblock %}

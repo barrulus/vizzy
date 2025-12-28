@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Explore: {{ start_node.label }} - {{ import_info.name }}{% endblock %}
+
+{% block head_extra %}
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+    #graph-container {
+        width: 100%;
+        height: calc(100vh - 200px);
+        min-height: 500px;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        background: #fafafa;
+    }
+    .node-info {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        padding: 1rem;
+        max-width: 300px;
+        z-index: 100;
+    }
+    .controls {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        padding: 0.75rem;
+        z-index: 100;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Visual Explorer</span>
+    </nav>
+    <div class="flex items-center gap-4">
+        <input type="search" id="node-search" placeholder="Search to navigate..."
+               class="px-3 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <a href="/graph/node/{{ start_node.id }}" class="text-sm text-blue-600 hover:underline">Card View</a>
+    </div>
+</div>
+
+<div class="relative">
+    <div id="graph-container"></div>
+
+    <div class="controls">
+        <div class="text-sm font-semibold mb-2">Controls</div>
+        <div class="space-y-2 text-xs">
+            <div><strong>Click</strong> node: Expand neighbors</div>
+            <div><strong>Double-click</strong>: Center on node</div>
+            <div><strong>Scroll</strong>: Zoom in/out</div>
+            <div><strong>Drag</strong>: Pan around</div>
+        </div>
+        <div class="mt-3 pt-3 border-t">
+            <button id="btn-reset" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-sm w-full">
+                Reset View
+            </button>
+        </div>
+    </div>
+
+    <div class="node-info" id="node-info" style="display: none;">
+        <div class="text-sm font-semibold mb-2" id="info-label">-</div>
+        <div class="text-xs text-slate-500 mb-2" id="info-type">-</div>
+        <div class="space-y-1 text-xs">
+            <div><span class="text-slate-500">Dependencies:</span> <span id="info-deps">-</span></div>
+            <div><span class="text-slate-500">Dependents:</span> <span id="info-dependents">-</span></div>
+        </div>
+        <div class="mt-3 pt-3 border-t space-y-2">
+            <a id="info-link-detail" href="#" class="block text-xs text-blue-600 hover:underline">View Details</a>
+            <a id="info-link-impact" href="#" class="block text-xs text-blue-600 hover:underline">View Impact</a>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4 flex items-center gap-4 text-sm">
+    <div class="text-slate-500">
+        Showing: <span id="node-count">0</span> nodes, <span id="edge-count">0</span> edges
+    </div>
+    <div class="flex gap-2 flex-wrap">
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #74c0fc">library</span>
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #22d3ee">application</span>
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #69db7c">service</span>
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #b197fc">development</span>
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #ffd43b">configuration</span>
+        <span class="px-2 py-0.5 rounded text-xs" style="background: #e2e8f0">other</span>
+    </div>
+</div>
+
+<script>
+const startNodeId = {{ start_node.id }};
+const importId = {{ import_info.id }};
+
+let network = null;
+let nodesDataset = new vis.DataSet();
+let edgesDataset = new vis.DataSet();
+let loadedNodes = new Set();
+
+// Initialize the network
+const container = document.getElementById('graph-container');
+const data = { nodes: nodesDataset, edges: edgesDataset };
+const options = {
+    physics: {
+        enabled: true,
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+            gravitationalConstant: -50,
+            centralGravity: 0.01,
+            springLength: 100,
+            springConstant: 0.08,
+        },
+        stabilization: {
+            iterations: 100,
+            fit: true
+        }
+    },
+    interaction: {
+        hover: true,
+        tooltipDelay: 200,
+        navigationButtons: true,
+        keyboard: true,
+    },
+    edges: {
+        smooth: {
+            type: 'cubicBezier',
+            forceDirection: 'horizontal',
+        },
+        color: { color: '#94a3b8', hover: '#64748b' },
+        width: 1,
+    },
+    nodes: {
+        shadow: true,
+        margin: 10,
+    }
+};
+
+network = new vis.Network(container, data, options);
+
+// Load initial node
+loadNodeNeighbors(startNodeId);
+
+// Event handlers
+network.on('click', function(params) {
+    if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0];
+        showNodeInfo(nodeId);
+        loadNodeNeighbors(nodeId);
+    } else {
+        document.getElementById('node-info').style.display = 'none';
+    }
+});
+
+network.on('doubleClick', function(params) {
+    if (params.nodes.length > 0) {
+        network.focus(params.nodes[0], {
+            scale: 1.2,
+            animation: true
+        });
+    }
+});
+
+document.getElementById('btn-reset').addEventListener('click', function() {
+    network.fit({ animation: true });
+});
+
+// Search functionality
+document.getElementById('node-search').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        const query = this.value.trim();
+        if (query) {
+            searchAndNavigate(query);
+        }
+    }
+});
+
+async function loadNodeNeighbors(nodeId) {
+    if (loadedNodes.has(nodeId)) return;
+
+    try {
+        const response = await fetch(`/api/graph/${nodeId}?depth=1`);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error(data.error);
+            return;
+        }
+
+        // Add nodes that don't exist yet
+        data.nodes.forEach(node => {
+            if (!nodesDataset.get(node.id)) {
+                nodesDataset.add(node);
+            }
+        });
+
+        // Add edges that don't exist yet
+        data.edges.forEach(edge => {
+            const edgeId = `${edge.from}-${edge.to}`;
+            if (!edgesDataset.get(edgeId)) {
+                edgesDataset.add({ ...edge, id: edgeId });
+            }
+        });
+
+        loadedNodes.add(nodeId);
+        updateCounts();
+
+    } catch (err) {
+        console.error('Failed to load node:', err);
+    }
+}
+
+function showNodeInfo(nodeId) {
+    const node = nodesDataset.get(nodeId);
+    if (!node) return;
+
+    // Count edges
+    const edges = edgesDataset.get();
+    const deps = edges.filter(e => e.to === nodeId).length;
+    const dependents = edges.filter(e => e.from === nodeId).length;
+
+    document.getElementById('info-label').textContent = node.title || node.label;
+    document.getElementById('info-type').textContent = node.title || 'unknown';
+    document.getElementById('info-deps').textContent = deps;
+    document.getElementById('info-dependents').textContent = dependents;
+    document.getElementById('info-link-detail').href = `/graph/node/${nodeId}`;
+    document.getElementById('info-link-impact').href = `/impact/${nodeId}`;
+    document.getElementById('node-info').style.display = 'block';
+}
+
+function updateCounts() {
+    document.getElementById('node-count').textContent = nodesDataset.length;
+    document.getElementById('edge-count').textContent = edgesDataset.length;
+}
+
+async function searchAndNavigate(query) {
+    try {
+        const response = await fetch(`/search?import_id=${importId}&q=${encodeURIComponent(query)}`);
+        const html = await response.text();
+
+        // Parse first result link
+        const match = html.match(/href="\/graph\/node\/(\d+)"/);
+        if (match) {
+            const nodeId = parseInt(match[1]);
+            await loadNodeNeighbors(nodeId);
+            network.focus(nodeId, { scale: 1.2, animation: true });
+            network.selectNodes([nodeId]);
+            showNodeInfo(nodeId);
+        }
+    } catch (err) {
+        console.error('Search failed:', err);
+    }
+}
+
+// Initial focus
+setTimeout(() => {
+    network.focus(startNodeId, { scale: 1, animation: true });
+}, 500);
+</script>
+{% endblock %}

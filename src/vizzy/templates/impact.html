@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Impact: {{ node.label }} - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+<div class="flex items-center space-x-4">
+    <span class="text-slate-400">{{ import_info.name }}</span>
+    <input type="search"
+           placeholder="Search packages..."
+           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/graph/node/{{ node.id }}" class="hover:text-slate-700">{{ node.label }}</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">Impact</span>
+    </nav>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Main content -->
+    <div class="lg:col-span-3 space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h1 class="text-2xl font-bold mb-2">{{ node.label }}</h1>
+            <p class="text-slate-600 mb-4">
+                Including this package pulls in <strong>{{ total_count }}</strong> dependencies.
+            </p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="bg-slate-50 rounded p-3">
+                    <div class="text-2xl font-bold text-blue-600">{{ direct_deps|length }}</div>
+                    <div class="text-sm text-slate-500">Direct deps</div>
+                </div>
+                <div class="bg-slate-50 rounded p-3">
+                    <div class="text-2xl font-bold text-purple-600">{{ total_count }}</div>
+                    <div class="text-sm text-slate-500">Total deps</div>
+                </div>
+                <div class="bg-slate-50 rounded p-3">
+                    <div class="text-2xl font-bold text-green-600">{{ by_type|length }}</div>
+                    <div class="text-sm text-slate-500">Package types</div>
+                </div>
+                <div class="bg-slate-50 rounded p-3">
+                    <div class="text-2xl font-bold text-amber-600">{{ by_type.get('library', [])|length }}</div>
+                    <div class="text-sm text-slate-500">Libraries</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direct dependencies -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Direct Dependencies ({{ direct_deps|length }})</h2>
+            <p class="text-sm text-slate-500 mb-4">These are what {{ node.label }} directly requires.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {% for dep in direct_deps %}
+                <a href="/graph/node/{{ dep.id }}"
+                   class="p-2 rounded border border-slate-200 hover:bg-slate-50 transition text-sm">
+                    <div class="font-medium truncate">{{ dep.label }}</div>
+                    <div class="text-xs text-slate-400">{{ dep.package_type or 'unknown' }}</div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- By type -->
+        {% for pkg_type, pkgs in by_type.items() %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                <span>{{ pkg_type }} ({{ pkgs|length }})</span>
+                <span class="text-sm font-normal text-slate-500">
+                    {{ (pkgs|length / total_count * 100)|round(1) }}% of total
+                </span>
+            </h2>
+            <div class="flex flex-wrap gap-2">
+                {% for dep in pkgs[:50] %}
+                <a href="/graph/node/{{ dep.id }}"
+                   class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-sm transition truncate max-w-xs"
+                   title="{{ dep.label }}">
+                    {{ dep.label }}
+                </a>
+                {% endfor %}
+                {% if pkgs|length > 50 %}
+                <span class="px-2 py-1 text-slate-400 text-sm">...and {{ pkgs|length - 50 }} more</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="lg:col-span-1 space-y-4">
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Actions</h3>
+            <ul class="space-y-2 text-sm">
+                <li>
+                    <a href="/graph/node/{{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        View Node Details
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze/path/{{ import_info.id }}?source={{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Find Path From Here
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="bg-blue-50 rounded-lg p-4">
+            <h3 class="font-semibold text-blue-800 mb-2">What this means</h3>
+            <p class="text-sm text-blue-700">
+                By including <strong>{{ node.label }}</strong> in your config, you're also getting these {{ total_count }} packages as dependencies.
+            </p>
+            <p class="text-sm text-blue-700 mt-2">
+                This is normal - packages need libraries, tools, and runtime dependencies to work.
+            </p>
+        </div>
+
+        <!-- Search results placeholder -->
+        <div id="search-results"></div>
+    </div>
+</div>
+{% endblock %}

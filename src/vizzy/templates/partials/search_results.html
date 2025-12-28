@@ -1,0 +1,20 @@
+{% if results %}
+<div class="bg-white rounded-lg shadow p-4">
+    <h3 class="font-semibold mb-3">Search Results</h3>
+    <ul class="space-y-1 text-sm">
+        {% for node in results %}
+        <li>
+            <a href="/graph/node/{{ node.id }}"
+               class="block p-2 rounded hover:bg-slate-50">
+                <div class="font-medium truncate" title="{{ node.label }}">{{ node.label }}</div>
+                <div class="text-xs text-slate-400">{{ node.package_type }}</div>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% elif query %}
+<div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-slate-500">No results for "{{ query }}"</p>
+</div>
+{% endif %}
