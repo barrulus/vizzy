@@ -15,6 +15,11 @@ Vizzy solves the problem that full NixOS derivation graphs (100k+ nodes) are too
 - Interactive vis.js graph explorer
 - Direct NixOS flake integration
 
+## IMPORTANT NOTE
+
+> This is a quick LLM generated project that could be useful to someone, or not.
+If you think of a way to make the visualizations make more sense or want something added, please feel free to contribute or submit an issue with a detailed explanation and I will happily burn some tokens to make it a little less generically useless :)
+
 ## Prerequisites
 
 - Python 3.13+
