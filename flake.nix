@@ -29,6 +29,12 @@
             ];
 
             shellHook = ''
+              if [ ! -d .venv ]; then
+                echo "Creating virtual environment..."
+                python -m venv .venv
+              fi
+              source .venv/bin/activate
+
               echo "Vizzy - NixOS Derivation Graph Explorer"
               echo ""
               echo "Setup:"
