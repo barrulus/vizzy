@@ -93,11 +93,18 @@ If your `VIZZY_NIX_CONFIG_PATH` points to a valid flake with `nixosConfiguration
 
 ### From DOT File
 
-You can upload a pre-generated DOT file or import one from the filesystem. Generate a DOT file with:
+You can upload a pre-generated DOT file or import one from the filesystem.
+
+Generate a DOT file from your NixOS flake:
 
 ```bash
-nix-store -q --graph $(nix path-info --derivation .#nixosConfigurations.hostname.config.system.build.toplevel) > graph.dot
+nix eval .#nixosConfigurations.<hostname>.config.system.build.toplevel.drvPath --raw \
+  | xargs nix-store -q --graph \
+  | sed 's|/nix/store/[a-z0-9]\{32\}-||g' \
+  > graph.dot
 ```
+
+The `sed` command strips the `/nix/store/<hash>-` prefix from node names for readability.
 
 ## Pages
 
