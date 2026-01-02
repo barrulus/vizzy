@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% set current_page = 'loops' %}
+
+{% block title %}Circular Dependencies - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="search"
+           placeholder="Search packages..."
+           class="nav-search-input"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q"
+           aria-label="Search packages">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h1 class="text-2xl font-bold mb-2">Circular Dependencies (Loops)</h1>
+    <p class="text-slate-600 mb-6">
+        Strongly connected components in the dependency graph where packages depend on each other in a cycle.
+        Circular dependencies are unusual in Nix but can occur with overrides or fixpoints.
+    </p>
+
+    {% if loops %}
+    <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <p class="text-amber-800">
+            <span class="font-semibold">Found {{ loops|length }} cycle{% if loops|length != 1 %}s{% endif %}</span>
+            involving <span class="font-semibold">{{ total_nodes }} node{% if total_nodes != 1 %}s{% endif %}</span> total.
+        </p>
+    </div>
+
+    <div class="space-y-6">
+        {% for cycle in loops %}
+        <div class="border border-slate-200 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-lg">Cycle #{{ loop.index }}</h3>
+                <span class="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    {{ cycle.size }} node{% if cycle.size != 1 %}s{% endif %}
+                </span>
+            </div>
+
+            <!-- Cycle Path Visualization -->
+            {% if cycle.cycle_path %}
+            <div class="mb-4 p-3 bg-slate-50 rounded">
+                <h4 class="text-sm font-medium text-slate-600 mb-2">Cycle Path:</h4>
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    {% for node_id in cycle.cycle_path %}
+                        {% for node in cycle.nodes %}
+                            {% if node.id == node_id %}
+                                <a href="/graph/node/{{ node.id }}"
+                                   class="px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition">
+                                    {{ node.label }}
+                                </a>
+                                {% if not loop.last %}
+                                <span class="text-slate-400">&rarr;</span>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- All Nodes in SCC -->
+            <h4 class="text-sm font-medium text-slate-600 mb-2">All Nodes in Cycle:</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for node in cycle.nodes %}
+                <a href="/graph/node/{{ node.id }}"
+                   class="block p-3 bg-slate-50 rounded hover:bg-slate-100 transition"
+                   data-navigable>
+                    <div class="font-medium text-slate-800 truncate" title="{{ node.label }}">
+                        {{ node.label }}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1">
+                        {{ node.package_type or 'unknown' }}
+                    </div>
+                    <div class="text-xs font-mono text-slate-400 mt-1">
+                        {{ node.drv_hash[:12] }}...
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">&#10003;</div>
+        <p class="text-lg text-slate-600">No circular dependencies found!</p>
+        <p class="text-sm text-slate-500 mt-2">
+            This is expected - Nix derivation graphs are typically acyclic.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Related Analysis Links -->
+<div class="mt-6 bg-white rounded-lg shadow p-4">
+    <h3 class="font-semibold mb-3">Related Analysis</h3>
+    <div class="flex flex-wrap gap-3">
+        <a href="/analyze/duplicates/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Duplicate Derivations
+        </a>
+        <a href="/analyze/redundant/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Redundant Links
+        </a>
+        <a href="/analyze/path/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Path Finder
+        </a>
+    </div>
+</div>
+{% endblock %}

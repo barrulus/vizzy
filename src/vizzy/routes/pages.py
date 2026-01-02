@@ -11,6 +11,8 @@ from vizzy.services import graph as graph_service
 from vizzy.services import importer
 from vizzy.services import nix as nix_service
 from vizzy.services import render as render_service
+from vizzy.services import dashboard as dashboard_service
+from vizzy.services import baseline as baseline_service
 
 router = APIRouter()
 
@@ -99,6 +101,11 @@ async def node_view(request: Request, node_id: int):
 
     import_info = graph_service.get_import(node_data.node.import_id)
 
+    # Fetch metadata on-demand if not already present
+    metadata = node_data.node.metadata
+    if not metadata:
+        metadata = importer.fetch_single_node_metadata(node_id)
+
     svg = render_service.render_node_detail(
         node_data.node,
         node_data.dependencies,
@@ -111,6 +118,7 @@ async def node_view(request: Request, node_id: int):
             "request": request,
             "import_info": import_info,
             "node": node_data.node,
+            "metadata": metadata,
             "dependencies": node_data.dependencies,
             "dependents": node_data.dependents,
             "svg": svg,
@@ -511,8 +519,17 @@ async def import_existing(name: str = Form(...), dot_path: str = Form(...)):
 
 @router.post("/import/{import_id}/delete")
 async def delete_import(import_id: int):
-    """Delete an import and all its data"""
+    """Delete an import and all its data.
+
+    Invalidates all related caches before deletion to ensure clean state.
+    """
     from vizzy.database import get_db
+    from vizzy.services.attribution_cache import invalidate_attribution_cache
+    from vizzy.services.cache import cache
+
+    # Invalidate all caches before deletion (8E-008)
+    invalidate_attribution_cache(import_id)
+    cache.invalidate_import(import_id)
 
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -556,3 +573,199 @@ async def import_nix(host: str = Form(...)):
             """,
             status_code=500,
         )
+
+
+# =============================================================================
+# System Health Dashboard (Phase 8B)
+# =============================================================================
+
+
+@router.get("/dashboard/{import_id}", response_class=HTMLResponse)
+async def dashboard(request: Request, import_id: int):
+    """System Health Dashboard showing key metrics and health indicators.
+
+    This dashboard answers the question: "How healthy is my system closure?"
+    It displays:
+    - Total derivations and edges
+    - Redundancy score (percentage of redundant edges)
+    - Runtime dependency ratio
+    - Depth statistics
+    - Top contributors by closure size
+    - Package type distribution
+    """
+    import_info = graph_service.get_import(import_id)
+    if not import_info:
+        return HTMLResponse("Import not found", status_code=404)
+
+    # Get dashboard summary metrics
+    summary = dashboard_service.get_dashboard_summary(import_id)
+
+    # Transform summary for template compatibility
+    template_summary = None
+    if summary:
+        template_summary = {
+            "total_nodes": summary.total_nodes,
+            "total_edges": summary.total_edges,
+            "redundancy_score": summary.redundancy_score,
+            "build_runtime_ratio": summary.runtime_ratio,
+            "depth_stats": {
+                "max": summary.depth_stats.max_depth,
+                "avg": summary.depth_stats.avg_depth,
+                "median": summary.depth_stats.median_depth,
+            },
+            "baseline_comparison": None,
+        }
+        if summary.baseline_comparison:
+            template_summary["baseline_comparison"] = {
+                "baseline_name": summary.baseline_comparison.baseline_name,
+                "percentage": summary.baseline_comparison.percentage,
+            }
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "import_info": import_info,
+            "summary": template_summary,
+        },
+    )
+
+
+@router.get("/dashboard/{import_id}/contributors", response_class=HTMLResponse)
+async def dashboard_top_contributors_partial(
+    request: Request,
+    import_id: int,
+    limit: int = 10,
+):
+    """HTMX partial endpoint for top contributors list.
+
+    Returns an HTML partial for HTMX to swap into the dashboard.
+    """
+    import_info = graph_service.get_import(import_id)
+    if not import_info:
+        return HTMLResponse(
+            '<div class="text-red-500 text-sm">Import not found</div>',
+            status_code=404,
+        )
+
+    contributors = dashboard_service.get_top_contributors(
+        import_id,
+        limit=limit,
+        top_level_only=True,
+    )
+
+    # Calculate max closure size for bar chart scaling
+    max_closure_size = max(
+        (c.closure_size for c in contributors if c.closure_size),
+        default=1,
+    )
+
+    return templates.TemplateResponse(
+        "dashboard/contributors.html",
+        {
+            "request": request,
+            "contributors": contributors,
+            "max_closure_size": max_closure_size,
+        },
+    )
+
+
+@router.get("/dashboard/{import_id}/types", response_class=HTMLResponse)
+async def dashboard_type_distribution_partial(
+    request: Request,
+    import_id: int,
+):
+    """HTMX partial endpoint for package type distribution chart.
+
+    Returns an HTML partial with an SVG donut chart and legend.
+    """
+    import_info = graph_service.get_import(import_id)
+    if not import_info:
+        return HTMLResponse(
+            '<div class="text-red-500 text-sm">Import not found</div>',
+            status_code=404,
+        )
+
+    distribution = dashboard_service.get_type_distribution(import_id)
+
+    # Transform for template compatibility
+    types = [
+        {
+            "type": entry.package_type,
+            "count": entry.count,
+            "percentage": entry.percentage,
+        }
+        for entry in distribution
+    ]
+
+    # Calculate total for center text
+    total = sum(entry.count for entry in distribution)
+
+    return templates.TemplateResponse(
+        "dashboard/type_distribution.html",
+        {
+            "request": request,
+            "types": types,
+            "total": total,
+            "import_id": import_id,
+        },
+    )
+
+
+# =============================================================================
+# Closure Treemap (Phase 8C)
+# =============================================================================
+
+
+@router.get("/treemap/{import_id}", response_class=HTMLResponse)
+async def treemap(request: Request, import_id: int):
+    """Closure Treemap visualization showing size attribution.
+
+    This visualization answers the question: "Which packages contribute
+    most to my system's closure size?"
+
+    Features:
+    - Hierarchical view with multiple organization modes
+    - Interactive zoom navigation
+    - Color coding by package type
+    - Filter by runtime/build-time dependencies
+    """
+    import_info = graph_service.get_import(import_id)
+    if not import_info:
+        return HTMLResponse("Import not found", status_code=404)
+
+    return templates.TemplateResponse(
+        "treemap.html",
+        {
+            "request": request,
+            "import_info": import_info,
+        },
+    )
+
+
+# =============================================================================
+# Baseline Management (Phase 8F-004)
+# =============================================================================
+
+
+@router.get("/baselines", response_class=HTMLResponse)
+async def baselines_page(request: Request):
+    """Baseline management page.
+
+    Shows all saved baselines with options to:
+    - Create new baselines from imports
+    - Rename existing baselines
+    - Delete user baselines
+    - View baseline details
+    """
+    imports = graph_service.get_imports()
+    baselines = baseline_service.list_baselines(include_system=True, limit=100)
+
+    return templates.TemplateResponse(
+        "baselines/index.html",
+        {
+            "request": request,
+            "baselines": baselines,
+            "imports": imports,
+        },
+    )

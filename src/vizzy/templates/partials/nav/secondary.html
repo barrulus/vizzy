@@ -1,0 +1,70 @@
+{#
+   Secondary Navigation (Tab-style) Component
+   Phase 8H-001: Unified navigation system
+
+   Usage:
+   {% include "partials/nav/secondary.html" %}
+
+   Required context:
+   - import_info: Import object with id
+   - current_page: String identifying current page for active state
+     Options: 'explore', 'dashboard', 'treemap', 'duplicates', 'path', 'loops',
+              'redundant', 'why_chain', 'sankey', 'matrix', 'defined', 'module_packages'
+#}
+
+<nav class="nav-secondary" aria-label="Configuration views">
+    <div class="nav-secondary-container">
+        {# Primary Views #}
+        <a href="/explore/{{ import_info.id }}"
+           class="nav-secondary-link {% if current_page == 'explore' %}active{% endif %}"
+           {% if current_page == 'explore' %}aria-current="page"{% endif %}>
+            <svg class="nav-secondary-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            Explore
+        </a>
+
+        <a href="/dashboard/{{ import_info.id }}"
+           class="nav-secondary-link {% if current_page == 'dashboard' %}active{% endif %}"
+           {% if current_page == 'dashboard' %}aria-current="page"{% endif %}>
+            <svg class="nav-secondary-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            Dashboard
+        </a>
+
+        <a href="/treemap/{{ import_info.id }}"
+           class="nav-secondary-link {% if current_page == 'treemap' %}active{% endif %}"
+           {% if current_page == 'treemap' %}aria-current="page"{% endif %}>
+            <svg class="nav-secondary-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+            </svg>
+            Treemap
+        </a>
+
+        {# Analysis Views #}
+        <a href="/analyze/duplicates/{{ import_info.id }}"
+           class="nav-secondary-link {% if current_page in ['duplicates', 'matrix', 'sankey'] %}active{% endif %}"
+           {% if current_page == 'duplicates' %}aria-current="page"{% endif %}>
+            <svg class="nav-secondary-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Analysis
+        </a>
+
+        {# Compare Link #}
+        <a href="/compare?left={{ import_info.id }}"
+           class="nav-secondary-link {% if current_page == 'compare' %}active{% endif %}"
+           {% if current_page == 'compare' %}aria-current="page"{% endif %}>
+            <svg class="nav-secondary-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+            </svg>
+            Compare
+        </a>
+    </div>
+</nav>

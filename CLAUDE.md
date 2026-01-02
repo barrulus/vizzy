@@ -18,12 +18,6 @@ pip install -e ".[dev]"
 # Run development server
 uvicorn vizzy.main:app --reload
 
-# Run tests
-pytest
-
-# Run single test
-pytest tests/test_file.py::test_name -v
-
 # Database setup
 createdb vizzy
 psql vizzy < scripts/init_db.sql

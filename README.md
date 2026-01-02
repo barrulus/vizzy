@@ -6,14 +6,43 @@ Vizzy solves the problem that full NixOS derivation graphs (100k+ nodes) are too
 
 ## Features
 
+### Core Visualization
 - Multi-level graph visualization (clusters → nodes → details)
 - Server-side SVG rendering via Graphviz
+- Interactive vis.js graph explorer with semantic zoom
+- Closure Treemap with D3.js for size attribution
+- Pan/zoom for large graphs with keyboard navigation
+
+### Analysis Tools
 - Fuzzy search with PostgreSQL trigram matching
 - Duplicate package detection and comparison
 - Dependency path finding
 - Package impact analysis (transitive closure)
-- Interactive vis.js graph explorer
+- Loop detection (circular dependencies via Tarjan's SCC algorithm)
+- Redundant link detection (transitive reduction analysis)
+- Variant Matrix showing which apps use which package variants
+- Sankey flow diagrams showing why variants exist
+
+### Question-Driven Insights
+- **System Health Dashboard** - Key metrics at a glance
+- **Why Chain** - "Why is package X in my closure?" with attribution paths
+- **Closure Treemap** - "Which packages contribute most to closure size?"
+- Essential vs removable package classification
+- Module-level attribution (systemPackages, programs.*, services.*)
+
+### Host Comparison
+- Side-by-side diff between two NixOS configurations
+- Semantic grouping by category (Desktop, Services, Development, etc.)
+- Package trace comparison (how a package is reached in each config)
+- Version difference detection
+- Baseline presets for common comparisons
+- Export comparison reports (JSON, CSV, Markdown)
+
+### NixOS Integration
 - Direct NixOS flake integration
+- Automatic host discovery from flake
+- Build-time vs runtime edge classification
+- Top-level package identification
 
 ## IMPORTANT NOTE
 
@@ -138,6 +167,13 @@ Focused view of a single package type cluster:
 
 Detailed view of a single derivation:
 - Node metadata (hash, name, type, depth, closure size)
+- Nix derivation metadata (fetched on-demand via `nix derivation show`):
+  - System architecture
+  - Builder path
+  - Build inputs count
+  - Output paths
+  - Version and package name
+  - Source URL
 - Direct dependencies (what this node depends on)
 - Direct dependents (what depends on this node)
 - Graph visualization centered on this node
@@ -201,15 +237,116 @@ Find the shortest dependency path between two nodes:
 
 ### Analysis: Sankey (`/analyze/sankey/{import_id}/{label}`)
 
-Sankey flow diagram for package variants:
-- Visualizes which applications depend on which variants
-- Shows dependency flow from dependents through variants
+Sankey flow diagram showing why package variants exist:
+- **Left side**: Top-level applications (firefox, vscode, etc.)
+- **Middle**: Intermediate dependencies (curl, openssl, etc.)
+- **Right side**: Package variants (different derivation hashes)
+- Filter by specific application to trace its dependency path
 - Uses Plotly for interactive visualization
+
+### Analysis: Loops (`/analyze/loops/{import_id}`)
+
+Circular dependency detection using Tarjan's Strongly Connected Components algorithm:
+- Finds all cycles in the dependency graph
+- Shows nodes participating in each cycle
+- Displays the cycle path for visualization
+- Circular dependencies are unusual in Nix but can occur with overrides or fixpoints
+
+### Analysis: Redundant Links (`/analyze/redundant/{import_id}`)
+
+Transitive reduction analysis to find redundant edges:
+- Identifies edges A → C where a path A → B → ... → C exists
+- Shows the bypass path that makes each edge redundant
+- Helps understand inherited vs. direct dependencies
+- Useful for simplifying dependency understanding
+
+### Analysis: Why Chain (`/analyze/why/{import_id}/{node_id}`)
+
+Attribution analysis answering "Why is this package in my closure?":
+- Shows all paths from top-level packages to the target
+- Groups paths by intermediate "via" nodes for readability
+- Displays essential vs removable classification
+- Module-level attribution (which NixOS option added it)
+- Export reports in JSON, CSV, or Markdown
+
+### Analysis: Variant Matrix (`/analyze/matrix/{import_id}/{label}`)
+
+Matrix view showing which applications use which package variants:
+- Rows: Applications that depend on the package
+- Columns: Different derivation variants of the package
+- Highlights consolidation opportunities
+- Filter by runtime/build-time dependencies
+- Sort by dependent count, closure size, or hash
+
+### System Health Dashboard (`/dashboard/{import_id}`)
+
+At-a-glance metrics for your system closure:
+- Total derivations and edges
+- Redundancy score (percentage of redundant edges)
+- Runtime vs build-time dependency ratio
+- Depth statistics (max, average, median)
+- Top contributors by closure size
+- Package type distribution chart
+- Baseline comparison (if configured)
+
+### Closure Treemap (`/treemap/{import_id}`)
+
+D3.js treemap visualization showing closure size attribution:
+- View modes: By Application, By Type, By Depth, Flat
+- Filter by runtime/build-time dependencies
+- Click to zoom into subcategories
+- Breadcrumb navigation
+- Keyboard shortcuts (arrows to navigate, Escape to go back)
+- Color-coded by package type
+
+### Host Comparison (`/compare`)
+
+Compare two NixOS configurations side-by-side:
+- Select any two imports to compare
+- Shows packages unique to each side
+- Highlights version/hash differences
+- Semantic grouping by category (Desktop, Services, etc.)
+- Baseline presets for common comparisons
+
+### Package Trace (`/compare/trace/{left_id}/{right_id}`)
+
+Compare how a package is reached in two configurations:
+- Shows dependency paths in both configs
+- Highlights different inclusion reasons
+- Useful for understanding divergent closures
+
+### Baseline Management (`/baselines`)
+
+Manage closure baselines for comparison:
+- Create baselines from any import
+- System presets (minimal, desktop, server)
+- Use as comparison reference in dashboard
+- Track closure growth over time
+
+## Keyboard Shortcuts
+
+Global shortcuts available across views:
+
+| Key | Action |
+|-----|--------|
+| `/` | Focus search |
+| `?` | Show help |
+| `Escape` | Close modal / Go back |
+| `Home` | Reset to root view |
+
+Treemap-specific:
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate between cells |
+| Enter/Space | Zoom into cell |
+| `r` | Toggle runtime-only filter |
+| `b` | Toggle build-time-only filter |
+| Backspace | Go back one level |
 
 ## Architecture
 
 ```
-Browser (HTMX + SVG)
+Browser (HTMX + SVG + D3.js)
     ↓ HTML over the wire
 FastAPI Application
     ↓
@@ -218,23 +355,13 @@ Service Layer
 PostgreSQL + Graphviz + Nix CLI
 ```
 
-- **HTMX**: Server-rendered HTML with dynamic updates, no JavaScript framework
+- **HTMX**: Server-rendered HTML with dynamic updates, minimal JavaScript
+- **D3.js**: Client-side treemap visualization
+- **vis.js**: Interactive graph explorer
 - **Graphviz**: Server-side graph rendering to SVG
 - **PostgreSQL**: Graph storage with trigram search and recursive CTE queries
 - **Jinja2**: Server-side templating
-
-## Development
-
-```bash
-# Run tests
-pytest
-
-# Run single test
-pytest tests/test_file.py::test_name -v
-
-# Run with coverage
-pytest --cov=vizzy
-```
+- **Plotly**: Interactive Sankey diagrams
 
 ## License
 

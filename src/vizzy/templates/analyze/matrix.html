@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}{{ matrix.label }} Variants Matrix - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+<form action="/search" method="GET" class="flex items-center gap-2">
+    <input type="hidden" name="import_id" value="{{ import_info.id }}">
+    <input type="text" name="q" placeholder="Search packages..."
+           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav class="text-sm text-slate-500">
+        <a href="/" class="hover:text-slate-700">Home</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
+        <span class="mx-2">&gt;</span>
+        <a href="/analyze/duplicates/{{ import_info.id }}" class="hover:text-slate-700">Duplicates</a>
+        <span class="mx-2">&gt;</span>
+        <span class="text-slate-700">{{ matrix.label }} Matrix</span>
+    </nav>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+    <!-- Header with title and actions -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold mb-2">{{ matrix.label }} Variants</h1>
+            <p class="text-slate-600">
+                {{ matrix.total_variants }} variant{% if matrix.total_variants != 1 %}s{% endif %}
+                used by {{ matrix.total_dependents }} dependent{% if matrix.total_dependents != 1 %}s{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="/analyze/compare/{{ import_info.id }}/{{ matrix.label }}"
+               class="px-4 py-2 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition text-sm">
+                Compare Variants
+            </a>
+            <a href="/analyze/sankey/{{ import_info.id }}/{{ matrix.label }}"
+               class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Flow Diagram
+            </a>
+        </div>
+    </div>
+
+    <!-- Controls for filtering and sorting -->
+    <div class="mb-6 p-4 bg-slate-50 rounded-lg">
+        <form id="matrix-controls" class="flex flex-wrap gap-4 items-center" method="GET">
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-slate-600" for="sort_by">Sort variants by:</label>
+                <select id="sort_by" name="sort_by"
+                        class="text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                    <option value="dependent_count" {% if sort_by == 'dependent_count' %}selected{% endif %}>Dependent Count</option>
+                    <option value="closure_size" {% if sort_by == 'closure_size' %}selected{% endif %}>Closure Size</option>
+                    <option value="hash" {% if sort_by == 'hash' %}selected{% endif %}>Hash</option>
+                </select>
+            </div>
+
+            {% if matrix.has_build_runtime_info %}
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-slate-600" for="filter_type">Dep type:</label>
+                <select id="filter_type" name="filter_type"
+                        class="text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onchange="this.form.submit()">
+                    <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Dependencies</option>
+                    <option value="runtime" {% if filter_type == 'runtime' %}selected{% endif %}>Runtime Only</option>
+                    <option value="build" {% if filter_type == 'build' %}selected{% endif %}>Build Only</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="direct_only" name="direct_only" value="1"
+                       {% if direct_only %}checked{% endif %}
+                       class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                       onchange="this.form.submit()">
+                <label class="text-sm text-slate-600" for="direct_only">
+                    Top-level only
+                </label>
+            </div>
+
+            <div class="flex items-center gap-2 ml-auto">
+                <input type="checkbox" id="show_top_level" name="show_top_level" value="1"
+                       {% if show_top_level %}checked{% endif %}
+                       class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                       onchange="this.form.submit()">
+                <label class="text-sm text-slate-600" for="show_top_level">
+                    Highlight top-level packages
+                </label>
+            </div>
+        </form>
+    </div>
+
+    <!-- Row sorting controls -->
+    <div class="mb-4 flex items-center gap-4">
+        <span class="text-sm text-slate-600">Sort rows by:</span>
+        <button type="button" id="sort-by-name"
+                class="px-3 py-1 text-sm bg-slate-200 hover:bg-slate-300 rounded transition row-sort-btn active"
+                data-sort="name">
+            Name
+        </button>
+        <button type="button" id="sort-by-variants"
+                class="px-3 py-1 text-sm bg-slate-200 hover:bg-slate-300 rounded transition row-sort-btn"
+                data-sort="variants">
+            Variant Count
+        </button>
+        <button type="button" id="sort-by-top-level"
+                class="px-3 py-1 text-sm bg-slate-200 hover:bg-slate-300 rounded transition row-sort-btn"
+                data-sort="top-level">
+            Top-level First
+        </button>
+    </div>
+
+    <!-- Legend -->
+    <div class="mb-6 flex flex-wrap gap-4 text-sm">
+        <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded-full bg-green-500"></span>
+            <span class="text-slate-600">Uses this variant</span>
+        </div>
+        {% if matrix.has_build_runtime_info %}
+        <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded-full bg-blue-500"></span>
+            <span class="text-slate-600">Runtime dependency</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded-full bg-amber-500"></span>
+            <span class="text-slate-600">Build dependency</span>
+        </div>
+        {% endif %}
+        <div class="flex items-center gap-2">
+            <span class="inline-block px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Top-level</span>
+            <span class="text-slate-600">Explicitly requested package</span>
+        </div>
+    </div>
+
+    {% if matrix.variants %}
+    <!-- Matrix table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full border-collapse" id="variant-matrix">
+            <thead>
+                <tr>
+                    <th class="sticky left-0 bg-white z-10 p-3 border border-slate-200 text-left text-sm font-semibold text-slate-700 min-w-48">
+                        Dependent Package
+                    </th>
+                    {% for variant in matrix.variants %}
+                    <th class="p-3 border border-slate-200 text-center min-w-32">
+                        <div class="flex flex-col items-center gap-1">
+                            <a href="/graph/node/{{ variant.node_id }}"
+                               class="font-mono text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                               title="View {{ variant.drv_hash }}">
+                                {{ variant.short_hash }}
+                            </a>
+                            <div class="text-xs text-slate-500">
+                                {{ variant.dependent_count }} dep{% if variant.dependent_count != 1 %}s{% endif %}
+                            </div>
+                            {% if variant.dependency_type %}
+                            <span class="text-xs px-1.5 py-0.5 rounded
+                                {% if variant.dependency_type == 'runtime' %}bg-blue-100 text-blue-800
+                                {% elif variant.dependency_type == 'build' %}bg-amber-100 text-amber-800
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ variant.dependency_type }}
+                            </span>
+                            {% endif %}
+                            {% if variant.closure_size %}
+                            <span class="text-xs text-slate-400">
+                                closure: {{ variant.closure_size }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody id="matrix-body">
+                {% for app in matrix.applications %}
+                {% set variant_count = app.cells.values() | selectattr('has_dep') | list | length %}
+                <tr class="hover:bg-slate-50 {% if app.is_top_level %}bg-purple-50{% endif %} matrix-row"
+                    data-name="{{ app.label | lower }}"
+                    data-variants="{{ variant_count }}"
+                    data-top-level="{{ 1 if app.is_top_level else 0 }}">
+                    <td class="sticky left-0 {% if app.is_top_level %}bg-purple-50{% else %}bg-white{% endif %} z-10 p-3 border border-slate-200">
+                        <div class="flex items-center gap-2">
+                            {% if app.node_id %}
+                            <a href="/graph/node/{{ app.node_id }}"
+                               class="font-medium text-slate-800 hover:text-blue-600 hover:underline truncate max-w-xs"
+                               title="{{ app.label }}"
+                               data-navigable>
+                                {{ app.label }}
+                            </a>
+                            {% else %}
+                            <span class="font-medium text-slate-800 truncate max-w-xs" title="{{ app.label }}">
+                                {{ app.label }}
+                            </span>
+                            {% endif %}
+                            {% if app.is_top_level %}
+                            <span class="shrink-0 px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">
+                                Top-level
+                            </span>
+                            {% endif %}
+                            {% if app.package_type %}
+                            <span class="shrink-0 text-xs text-slate-400">({{ app.package_type }})</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% for variant in matrix.variants %}
+                    {% set cell = app.cells[variant.node_id] %}
+                    <td class="p-3 border border-slate-200 text-center">
+                        {% if cell.has_dep %}
+                        <span class="inline-block w-5 h-5 rounded-full
+                            {% if cell.dep_type == 'runtime' %}bg-blue-500
+                            {% elif cell.dep_type == 'build' %}bg-amber-500
+                            {% else %}bg-green-500{% endif %}"
+                            title="{% if cell.dep_type %}{{ cell.dep_type }} dependency{% else %}depends on this variant{% endif %}">
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="bg-slate-100">
+                    <td class="sticky left-0 bg-slate-100 z-10 p-3 border border-slate-200 font-semibold text-slate-700">
+                        Total Dependents
+                    </td>
+                    {% for variant in matrix.variants %}
+                    <td class="p-3 border border-slate-200 text-center font-semibold text-slate-700">
+                        {{ variant.dependent_count }}
+                    </td>
+                    {% endfor %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if matrix.total_variants > matrix.variants|length %}
+    <div class="mt-4 text-sm text-slate-500 text-center">
+        Showing {{ matrix.variants|length }} of {{ matrix.total_variants }} variants.
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-12">
+        <p class="text-slate-500">No variants found for <strong>{{ matrix.label }}</strong>.</p>
+        <p class="text-slate-400 text-sm mt-2">This package may only have a single derivation.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick summary card -->
+{% if matrix.variants %}
+<div class="mt-6 bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">Summary</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-4 bg-slate-50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-slate-800">{{ matrix.total_variants }}</div>
+            <div class="text-sm text-slate-500">Variants</div>
+        </div>
+        <div class="p-4 bg-slate-50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-slate-800">{{ matrix.total_dependents }}</div>
+            <div class="text-sm text-slate-500">Dependents</div>
+        </div>
+        {% set top_level_count = matrix.applications|selectattr('is_top_level')|list|length %}
+        <div class="p-4 bg-purple-50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-purple-800">{{ top_level_count }}</div>
+            <div class="text-sm text-purple-600">Top-level Packages</div>
+        </div>
+        <div class="p-4 bg-slate-50 rounded-lg text-center">
+            <div class="text-2xl font-bold text-slate-800">
+                {{ "%.1f"|format(matrix.total_dependents / matrix.total_variants) if matrix.total_variants else 0 }}
+            </div>
+            <div class="text-sm text-slate-500">Avg Deps/Variant</div>
+        </div>
+    </div>
+
+    {% if matrix.has_build_runtime_info %}
+    <div class="mt-4 pt-4 border-t border-slate-200">
+        <h3 class="text-sm font-semibold text-slate-700 mb-2">Dependency Type Distribution</h3>
+        <div class="flex gap-4">
+            {% set runtime_variants = matrix.variants|selectattr('dependency_type', 'equalto', 'runtime')|list|length %}
+            {% set build_variants = matrix.variants|selectattr('dependency_type', 'equalto', 'build')|list|length %}
+            {% set mixed_variants = matrix.variants|selectattr('dependency_type', 'equalto', 'mixed')|list|length %}
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-blue-500"></span>
+                <span class="text-sm text-slate-600">Runtime: {{ runtime_variants }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-amber-500"></span>
+                <span class="text-sm text-slate-600">Build: {{ build_variants }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-slate-500"></span>
+                <span class="text-sm text-slate-600">Mixed: {{ mixed_variants }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('variant-matrix');
+    const tbody = document.getElementById('matrix-body');
+    if (!table || !tbody) return;
+
+    // Row sorting functionality
+    let currentSortMode = 'name';
+    let sortDirection = 1; // 1 = ascending, -1 = descending
+
+    function sortRows(mode) {
+        const rows = Array.from(tbody.querySelectorAll('.matrix-row'));
+
+        // Toggle direction if clicking same sort button
+        if (mode === currentSortMode) {
+            sortDirection *= -1;
+        } else {
+            sortDirection = mode === 'variants' ? -1 : 1; // Variants defaults to descending
+            currentSortMode = mode;
+        }
+
+        rows.sort((a, b) => {
+            let aVal, bVal;
+
+            switch (mode) {
+                case 'name':
+                    aVal = a.dataset.name || '';
+                    bVal = b.dataset.name || '';
+                    return aVal.localeCompare(bVal) * sortDirection;
+
+                case 'variants':
+                    aVal = parseInt(a.dataset.variants, 10) || 0;
+                    bVal = parseInt(b.dataset.variants, 10) || 0;
+                    return (aVal - bVal) * sortDirection;
+
+                case 'top-level':
+                    aVal = parseInt(a.dataset.topLevel, 10) || 0;
+                    bVal = parseInt(b.dataset.topLevel, 10) || 0;
+                    // Sort by top-level first, then by name
+                    if (aVal !== bVal) {
+                        return (bVal - aVal) * sortDirection;
+                    }
+                    return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+
+                default:
+                    return 0;
+            }
+        });
+
+        // Re-append rows in sorted order
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Update button active states
+        document.querySelectorAll('.row-sort-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-blue-500', 'text-white');
+            btn.classList.add('bg-slate-200');
+        });
+        const activeBtn = document.querySelector(`[data-sort="${mode}"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-slate-200');
+            activeBtn.classList.add('active', 'bg-blue-500', 'text-white');
+        }
+    }
+
+    // Attach click handlers to sort buttons
+    document.querySelectorAll('.row-sort-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            sortRows(this.dataset.sort);
+        });
+    });
+
+    // Keyboard navigation for matrix table rows
+    let currentRow = -1;
+
+    function getVisibleRows() {
+        return Array.from(tbody.querySelectorAll('.matrix-row'));
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+        const rows = getVisibleRows();
+        if (rows.length === 0) return;
+
+        if (e.key === 'ArrowDown' || e.key === 'j') {
+            e.preventDefault();
+            if (currentRow < rows.length - 1) {
+                if (currentRow >= 0) rows[currentRow].classList.remove('ring-2', 'ring-blue-500');
+                currentRow++;
+                rows[currentRow].classList.add('ring-2', 'ring-blue-500');
+                rows[currentRow].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else if (e.key === 'ArrowUp' || e.key === 'k') {
+            e.preventDefault();
+            if (currentRow > 0) {
+                rows[currentRow].classList.remove('ring-2', 'ring-blue-500');
+                currentRow--;
+                rows[currentRow].classList.add('ring-2', 'ring-blue-500');
+                rows[currentRow].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else if (e.key === 'Enter' && currentRow >= 0) {
+            const link = rows[currentRow].querySelector('a');
+            if (link) link.click();
+        } else if (e.key === 'Escape') {
+            if (currentRow >= 0) {
+                rows[currentRow].classList.remove('ring-2', 'ring-blue-500');
+                currentRow = -1;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

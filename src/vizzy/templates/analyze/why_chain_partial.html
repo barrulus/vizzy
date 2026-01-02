@@ -1,0 +1,164 @@
+<!-- Why Chain Partial - for HTMX updates -->
+<div class="why-chain-result" data-node-id="{{ result.target.id }}">
+    <!-- Summary Section -->
+    <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="why-chain-summary">
+            <div class="why-chain-summary-header">
+                <div>
+                    <h3 class="text-lg font-semibold">
+                        Why is <span class="why-chain-summary-target">{{ result.target.label }}</span> here?
+                    </h3>
+                    <p class="text-slate-600 text-sm mt-1">{{ summary }}</p>
+                </div>
+                <div class="flex-shrink-0">
+                    {% if result.essentiality.value == 'essential' %}
+                    <span class="essentiality-badge essentiality-badge-essential" title="Required by at least one runtime top-level package">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Essential
+                    </span>
+                    {% elif result.essentiality.value == 'build_only' %}
+                    <span class="essentiality-badge essentiality-badge-build_only" title="Only needed at build time">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                        </svg>
+                        Build Only
+                    </span>
+                    {% elif result.essentiality.value == 'removable' %}
+                    <span class="essentiality-badge essentiality-badge-removable" title="Could potentially be removed">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Removable
+                    </span>
+                    {% elif result.essentiality.value == 'orphan' %}
+                    <span class="essentiality-badge essentiality-badge-orphan" title="No path from top-level">
+                        <svg viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        Orphan
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
+                <span class="why-chain-stat">Top-level: <strong class="why-chain-stat-value">{{ result.total_top_level_dependents }}</strong></span>
+                <span class="why-chain-stat">Paths: <strong class="why-chain-stat-value">{{ result.total_paths_found }}</strong></span>
+                {% if result.computation_time_ms %}
+                <span class="why-chain-stat">{{ "%.1f"|format(result.computation_time_ms) }}ms</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribution Groups -->
+    {% if result.attribution_groups %}
+    <div class="space-y-3" id="attribution-groups-partial">
+        {% for group in result.attribution_groups %}
+        <div class="attribution-group{% if loop.first %} expanded{% endif %}" data-group-index="{{ loop.index }}">
+            <div class="attribution-group-header"
+                 onclick="toggleGroup(this.parentElement)"
+                 tabindex="0"
+                 role="button"
+                 aria-expanded="{% if loop.first %}true{% else %}false{% endif %}"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGroup(this.parentElement);}">
+                <div class="attribution-group-header-left">
+                    <div class="attribution-group-via">
+                        <span class="attribution-group-via-label">Via</span>
+                        <a href="/graph/node/{{ group.via_node.id }}"
+                           class="attribution-group-via-link"
+                           onclick="event.stopPropagation();"
+                           data-navigable>
+                            {{ group.via_label }}
+                        </a>
+                    </div>
+                    <span class="attribution-group-count">
+                        {{ group.total_dependents }}
+                    </span>
+                </div>
+                <div class="attribution-group-expand">
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="attribution-group-content">
+                <!-- Top-level packages -->
+                <div class="mb-3">
+                    <div class="why-chain-section-header">
+                        <span class="why-chain-section-label">Needed by</span>
+                        <div class="why-chain-section-divider"></div>
+                    </div>
+                    <div class="top-level-packages">
+                        {% for pkg in group.top_level_packages[:5] %}
+                        <a href="/graph/node/{{ pkg.id }}"
+                           class="top-level-pill"
+                           title="{{ pkg.label }}"
+                           data-navigable>
+                            {{ pkg.label[:20] }}{% if pkg.label|length > 20 %}...{% endif %}
+                        </a>
+                        {% endfor %}
+                        {% if group.additional_count > 0 %}
+                        <span class="top-level-pill top-level-pill-more">+{{ group.additional_count }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Shortest path -->
+                <div>
+                    <div class="why-chain-section-header">
+                        <span class="why-chain-section-label">Shortest path</span>
+                        <div class="why-chain-section-divider"></div>
+                    </div>
+                    <div class="why-chain-path">
+                        {% for node in group.shortest_path %}
+                        <a href="/graph/node/{{ node.id }}"
+                           class="why-chain-path-node {% if loop.first %}why-chain-path-node-start{% elif loop.last %}why-chain-path-node-end{% else %}why-chain-path-node-middle{% endif %}"
+                           title="{{ node.label }}"
+                           data-navigable>
+                            {{ node.label[:18] }}{% if node.label|length > 18 %}...{% endif %}
+                        </a>
+                        {% if not loop.last %}
+                        <span class="why-chain-path-arrow">&rarr;</span>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="why-chain-empty">
+        <svg class="why-chain-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="why-chain-empty-title">No Attribution Paths Found</p>
+        <p class="why-chain-empty-description">This package may be an orphan.</p>
+    </div>
+    {% endif %}
+
+    <!-- Link to full view -->
+    <div class="mt-4 text-center">
+        <a href="/analyze/why/{{ import_info.id }}/{{ result.target.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            View full attribution details &rarr;
+        </a>
+    </div>
+</div>
+
+<script>
+// Toggle function for partial (in case it's loaded standalone)
+if (typeof toggleGroup === 'undefined') {
+    function toggleGroup(group) {
+        const wasExpanded = group.classList.contains('expanded');
+        group.classList.toggle('expanded');
+        const header = group.querySelector('.attribution-group-header');
+        if (header) {
+            header.setAttribute('aria-expanded', !wasExpanded);
+        }
+    }
+}
+</script>

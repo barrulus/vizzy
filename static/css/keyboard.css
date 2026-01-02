@@ -1,0 +1,241 @@
+/* Keyboard Navigation Styles for Vizzy */
+
+/* Selected item highlight */
+.keyboard-selected {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px;
+    background-color: #eff6ff !important;
+    border-radius: 0.25rem;
+}
+
+/* Keyboard shortcut key styling */
+kbd {
+    display: inline-block;
+    padding: 0.15em 0.4em;
+    font-size: 0.85em;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    color: #334155;
+    background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e1;
+    border-radius: 0.25rem;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1), 0 1px 0 0 rgba(255, 255, 255, 0.7) inset;
+    white-space: nowrap;
+    min-width: 1.5em;
+    text-align: center;
+}
+
+kbd .arrow-key {
+    font-size: 1.1em;
+}
+
+/* Keyboard Help Modal */
+.keyboard-help-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.keyboard-help-modal.hidden {
+    display: none;
+}
+
+.keyboard-help-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.keyboard-help-content {
+    position: relative;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 600px;
+    max-height: 85vh;
+    width: 90vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.keyboard-help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.keyboard-help-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.keyboard-help-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.keyboard-help-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.keyboard-help-body {
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.shortcut-category {
+    margin-bottom: 1.25rem;
+}
+
+.shortcut-category:last-child {
+    margin-bottom: 0;
+}
+
+.shortcut-category h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin: 0 0 0.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.shortcut-list {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.375rem 0;
+}
+
+.shortcut-keys {
+    min-width: 80px;
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.shortcut-desc {
+    color: #475569;
+    font-size: 0.875rem;
+}
+
+.keyboard-help-footer {
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.keyboard-help-footer p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.keyboard-help-footer kbd {
+    margin: 0 0.25rem;
+}
+
+/* Focus indicator hint - shown briefly when using keyboard */
+.keyboard-hint {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: #1e293b;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    z-index: 9998;
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.keyboard-hint.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.keyboard-hint kbd {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    margin-left: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .keyboard-help-content {
+        max-height: 90vh;
+        width: 95vw;
+        border-radius: 0.5rem;
+    }
+
+    .keyboard-help-header,
+    .keyboard-help-body,
+    .keyboard-help-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .shortcut-keys {
+        min-width: 60px;
+    }
+
+    .shortcut-item {
+        gap: 0.75rem;
+    }
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .keyboard-selected {
+        transition: none;
+    }
+
+    .keyboard-hint {
+        transition: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .keyboard-selected {
+        outline-width: 3px;
+        outline-color: #0000ff;
+    }
+
+    kbd {
+        border-width: 2px;
+        border-color: #000;
+    }
+}

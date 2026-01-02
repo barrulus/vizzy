@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% set current_page = 'why_chain' %}
+{% set node = result.target %}
+
+{% block title %}Why Chain - {{ result.target.label }} - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="search"
+           placeholder="Search packages..."
+           class="nav-search-input"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q"
+           aria-label="Search packages">
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Summary Card -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="why-chain-summary">
+        <div class="why-chain-summary-header">
+            <div>
+                <h1 class="why-chain-summary-title">
+                    Why is <span class="why-chain-summary-target">{{ result.target.label }}</span> here?
+                </h1>
+                <p class="why-chain-summary-description mt-2">{{ summary }}</p>
+            </div>
+            <div class="flex-shrink-0">
+                {% set status = essentiality_analysis.status.value %}
+                {% if status == 'essential' %}
+                <span class="essentiality-badge essentiality-badge-essential" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    Essential
+                </span>
+                {% elif status == 'essential_single' %}
+                <span class="essentiality-badge essentiality-badge-essential-single" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    Essential (Single)
+                </span>
+                {% elif status == 'essential_deep' %}
+                <span class="essentiality-badge essentiality-badge-essential-deep" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
+                    </svg>
+                    Deep Dependency
+                </span>
+                {% elif status == 'build_only' %}
+                <span class="essentiality-badge essentiality-badge-build_only" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                    </svg>
+                    Build Only
+                </span>
+                {% elif status == 'removable' %}
+                <span class="essentiality-badge essentiality-badge-removable" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Removable
+                </span>
+                {% elif status == 'orphan' %}
+                <span class="essentiality-badge essentiality-badge-orphan" title="{{ essentiality_analysis.status.description }}">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    Orphan
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="why-chain-summary-stats">
+            <span class="why-chain-stat">
+                Top-level dependents: <strong class="why-chain-stat-value ml-1">{{ result.total_top_level_dependents }}</strong>
+            </span>
+            <span class="why-chain-stat">
+                Paths found: <strong class="why-chain-stat-value ml-1">{{ result.total_paths_found }}</strong>
+            </span>
+            {% if result.computation_time_ms %}
+            <span class="why-chain-stat">
+                Computed in: <strong class="why-chain-stat-value ml-1">{{ "%.1f"|format(result.computation_time_ms) }}ms</strong>
+            </span>
+            {% endif %}
+            {% if result.cached_at %}
+            <span class="why-chain-stat why-chain-stat-cached">(cached)</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Export Controls (8E-010) -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-sm font-medium text-slate-700">Export Attribution Report</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="export-dropdown relative">
+                <button type="button"
+                        id="export-dropdown-btn"
+                        onclick="toggleExportDropdown()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    Export
+                    <svg class="w-4 h-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+                <div id="export-dropdown-menu"
+                     class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div class="py-1" role="menu" aria-orientation="vertical">
+                        <a href="/analyze/why/{{ import_info.id }}/{{ result.target.id }}/export?format=json&max_depth={{ max_depth }}&max_groups={{ max_groups }}&include_build_deps={{ include_build_deps }}"
+                           class="export-option group flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                           role="menuitem">
+                            <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <div class="font-medium">JSON</div>
+                                <div class="text-xs text-slate-500">Machine-readable format</div>
+                            </div>
+                        </a>
+                        <a href="/analyze/why/{{ import_info.id }}/{{ result.target.id }}/export?format=json&max_depth={{ max_depth }}&max_groups={{ max_groups }}&include_build_deps={{ include_build_deps }}&include_paths=true"
+                           class="export-option group flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                           role="menuitem">
+                            <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <div class="font-medium">JSON (with paths)</div>
+                                <div class="text-xs text-slate-500">Full data with detailed paths</div>
+                            </div>
+                        </a>
+                        <a href="/analyze/why/{{ import_info.id }}/{{ result.target.id }}/export?format=csv&max_depth={{ max_depth }}&max_groups={{ max_groups }}&include_build_deps={{ include_build_deps }}"
+                           class="export-option group flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                           role="menuitem">
+                            <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <div class="font-medium">CSV</div>
+                                <div class="text-xs text-slate-500">Spreadsheet compatible</div>
+                            </div>
+                        </a>
+                        <a href="/analyze/why/{{ import_info.id }}/{{ result.target.id }}/export?format=md&max_depth={{ max_depth }}&max_groups={{ max_groups }}&include_build_deps={{ include_build_deps }}"
+                           class="export-option group flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                           role="menuitem">
+                            <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm3 1h6v4H7V5zm6 6H7v2h6v-2z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <div class="font-medium">Markdown</div>
+                                <div class="text-xs text-slate-500">Human-readable report</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="text-xs text-slate-500 mt-2">
+        Export this attribution analysis to share or for further analysis. Current settings:
+        depth={{ max_depth }}, groups={{ max_groups }},
+        build deps={{ 'yes' if include_build_deps else 'no' }}
+    </p>
+</div>
+
+<!-- Removal Impact Analysis Card (8E-007) -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Removal Impact Analysis</h2>
+
+    <div class="removal-impact-container">
+        <!-- Impact Summary -->
+        <div class="removal-impact-summary removal-impact-{{ essentiality_analysis.removal_impact.impact_level }}">
+            <div class="removal-impact-icon">
+                {% if essentiality_analysis.removal_impact.impact_level == 'safe' %}
+                <svg viewBox="0 0 20 20" fill="currentColor" class="text-green-500">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                {% elif essentiality_analysis.removal_impact.impact_level == 'low' %}
+                <svg viewBox="0 0 20 20" fill="currentColor" class="text-blue-500">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                {% elif essentiality_analysis.removal_impact.impact_level == 'medium' %}
+                <svg viewBox="0 0 20 20" fill="currentColor" class="text-yellow-500">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                {% else %}
+                <svg viewBox="0 0 20 20" fill="currentColor" class="text-red-500">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                {% endif %}
+            </div>
+            <div class="removal-impact-text">
+                <div class="removal-impact-headline">{{ essentiality_analysis.removal_impact.summary }}</div>
+                <div class="removal-impact-guidance">{{ essentiality_analysis.action_guidance }}</div>
+            </div>
+        </div>
+
+        <!-- Impact Metrics Grid -->
+        <div class="removal-impact-metrics">
+            <div class="removal-impact-metric">
+                <div class="removal-impact-metric-value">{{ essentiality_analysis.removal_impact.closure_reduction }}</div>
+                <div class="removal-impact-metric-label">Closure Reduction</div>
+            </div>
+            <div class="removal-impact-metric">
+                <div class="removal-impact-metric-value">{{ essentiality_analysis.removal_impact.affected_count }}</div>
+                <div class="removal-impact-metric-label">Affected Packages</div>
+            </div>
+            <div class="removal-impact-metric">
+                <div class="removal-impact-metric-value">{{ essentiality_analysis.runtime_dependents }}</div>
+                <div class="removal-impact-metric-label">Runtime Dependents</div>
+            </div>
+            <div class="removal-impact-metric">
+                <div class="removal-impact-metric-value">{{ essentiality_analysis.build_dependents }}</div>
+                <div class="removal-impact-metric-label">Build Dependents</div>
+            </div>
+        </div>
+
+        <!-- Affected Packages List -->
+        {% if essentiality_analysis.removal_impact.affected_packages %}
+        <div class="removal-impact-affected">
+            <div class="removal-impact-affected-header">
+                <span class="removal-impact-affected-label">If you remove this, these packages would be affected:</span>
+            </div>
+            <div class="removal-impact-affected-list">
+                {% for pkg in essentiality_analysis.removal_impact.affected_packages[:8] %}
+                <a href="/graph/node/{{ pkg.id }}"
+                   class="removal-impact-affected-pkg"
+                   title="{{ pkg.label }}"
+                   data-navigable>
+                    {{ pkg.label[:30] }}{% if pkg.label|length > 30 %}...{% endif %}
+                </a>
+                {% endfor %}
+                {% if essentiality_analysis.removal_impact.affected_count > 8 %}
+                <span class="removal-impact-affected-more">
+                    +{{ essentiality_analysis.removal_impact.affected_count - 8 }} more
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Unique Dependencies Preview -->
+        {% if essentiality_analysis.removal_impact.unique_deps_removed %}
+        <div class="removal-impact-unique-deps">
+            <div class="removal-impact-unique-header">
+                <span class="removal-impact-unique-label">
+                    Unique dependencies that would be removed ({{ essentiality_analysis.removal_impact.unique_deps_count }} total):
+                </span>
+            </div>
+            <div class="removal-impact-unique-list">
+                {% for dep in essentiality_analysis.removal_impact.unique_deps_removed[:6] %}
+                <a href="/graph/node/{{ dep.id }}"
+                   class="removal-impact-unique-dep"
+                   title="{{ dep.label }}"
+                   data-navigable>
+                    {{ dep.label[:25] }}{% if dep.label|length > 25 %}...{% endif %}
+                </a>
+                {% endfor %}
+                {% if essentiality_analysis.removal_impact.unique_deps_count > 6 %}
+                <span class="removal-impact-unique-more">
+                    +{{ essentiality_analysis.removal_impact.unique_deps_count - 6 }} more
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Depth Information -->
+        <div class="removal-impact-depth">
+            <div class="removal-impact-depth-item">
+                <span class="removal-impact-depth-label">Dependency Type:</span>
+                <span class="removal-impact-depth-value">
+                    {% if essentiality_analysis.is_direct_dependency %}Direct dependency{% else %}Indirect ({{ essentiality_analysis.depth_category }}){% endif %}
+                </span>
+            </div>
+            <div class="removal-impact-depth-item">
+                <span class="removal-impact-depth-label">Average Path Depth:</span>
+                <span class="removal-impact-depth-value">{{ "%.1f"|format(essentiality_analysis.path_depth_avg) }}</span>
+            </div>
+            <div class="removal-impact-depth-item">
+                <span class="removal-impact-depth-label">Max Path Depth:</span>
+                <span class="removal-impact-depth-value">{{ essentiality_analysis.path_depth_max }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Module Attribution Card (8E-009) -->
+{% if module_attribution and module_attribution.total_packages > 0 %}
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Where Do These Packages Come From?</h2>
+    <p class="text-sm text-slate-600 mb-4">
+        This shows which NixOS configuration options are responsible for adding the top-level packages that depend on <strong>{{ result.target.label }}</strong>.
+    </p>
+
+    <div class="module-attribution-container">
+        <!-- Summary Stats -->
+        <div class="module-attribution-summary">
+            <div class="module-attribution-stat">
+                <span class="module-attribution-stat-value">{{ module_attribution.total_packages }}</span>
+                <span class="module-attribution-stat-label">Top-level packages</span>
+            </div>
+            <div class="module-attribution-stat">
+                <span class="module-attribution-stat-value">{{ module_attribution.groups|length }}</span>
+                <span class="module-attribution-stat-label">Module types</span>
+            </div>
+        </div>
+
+        <!-- Module Groups -->
+        <div class="module-attribution-groups">
+            {% for group in module_attribution.groups %}
+            <div class="module-attribution-group {{ group.css_class }}">
+                <div class="module-attribution-group-header">
+                    <div class="module-attribution-group-icon">
+                        {% if group.module_type == 'systemPackages' %}
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                        </svg>
+                        {% elif group.module_type == 'programs' %}
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                        </svg>
+                        {% elif group.module_type == 'services' %}
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"/>
+                        </svg>
+                        {% else %}
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <div class="module-attribution-group-info">
+                        <div class="module-attribution-group-name">{{ group.display_name }}</div>
+                        <div class="module-attribution-group-description">{{ group.description }}</div>
+                    </div>
+                    <div class="module-attribution-group-count">
+                        <span class="module-attribution-count-value">{{ group.count }}</span>
+                        <span class="module-attribution-count-label">package{% if group.count != 1 %}s{% endif %}</span>
+                    </div>
+                </div>
+
+                <!-- Packages in this group -->
+                <div class="module-attribution-packages">
+                    {% for pkg in group.packages[:6] %}
+                    <a href="/graph/node/{{ pkg.node_id }}"
+                       class="module-attribution-package"
+                       title="{{ pkg.display_source }}"
+                       data-navigable>
+                        <span class="module-attribution-package-name">{{ pkg.label[:25] }}{% if pkg.label|length > 25 %}...{% endif %}</span>
+                        {% if pkg.source != 'systemPackages' and pkg.source != 'unknown' %}
+                        <span class="module-attribution-package-source">{{ pkg.source }}</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                    {% if group.count > 6 %}
+                    <span class="module-attribution-package-more">
+                        +{{ group.count - 6 }} more
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not module_attribution.has_attribution %}
+        <div class="module-attribution-note">
+            <svg viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-400">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <span>Module attribution data may not be available for all packages. Run a fresh import with module detection enabled for complete data.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Query Options -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <form action="/analyze/why/{{ import_info.id }}/{{ result.target.id }}" method="GET" class="why-chain-options">
+        <div class="why-chain-option">
+            <label class="why-chain-option-label" for="max_depth">Max Depth:</label>
+            <select name="max_depth" id="max_depth">
+                {% for d in [5, 10, 15, 20, 30, 50] %}
+                <option value="{{ d }}" {% if d == max_depth %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="why-chain-option">
+            <label class="why-chain-option-label" for="max_groups">Max Groups:</label>
+            <select name="max_groups" id="max_groups">
+                {% for g in [5, 10, 15, 20, 30, 50] %}
+                <option value="{{ g }}" {% if g == max_groups %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <label class="why-chain-option-checkbox">
+            <input type="checkbox" name="include_build_deps" value="true"
+                   {% if include_build_deps %}checked{% endif %}>
+            <span class="why-chain-option-label">Include build-time dependencies</span>
+        </label>
+        <button type="submit" class="why-chain-update-btn">
+            Update
+        </button>
+    </form>
+</div>
+
+<!-- Attribution Groups -->
+{% if result.attribution_groups %}
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Attribution Paths</h2>
+        <div class="flex gap-2">
+            <button type="button" onclick="expandAllGroups()" class="text-sm text-blue-600 hover:text-blue-800">
+                Expand All
+            </button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="collapseAllGroups()" class="text-sm text-blue-600 hover:text-blue-800">
+                Collapse All
+            </button>
+        </div>
+    </div>
+    <p class="text-slate-600 text-sm mb-4">
+        Grouped by the intermediate package that leads to <strong>{{ result.target.label }}</strong>.
+        Click a group to expand details.
+    </p>
+
+    <div class="space-y-3" id="attribution-groups">
+        {% for group in result.attribution_groups %}
+        <div class="attribution-group" data-group-index="{{ loop.index }}">
+            <div class="attribution-group-header"
+                 onclick="toggleGroup(this.parentElement)"
+                 tabindex="0"
+                 role="button"
+                 aria-expanded="false"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGroup(this.parentElement);}">
+                <div class="attribution-group-header-left">
+                    <div class="attribution-group-via">
+                        <span class="attribution-group-via-label">Via</span>
+                        <a href="/graph/node/{{ group.via_node.id }}"
+                           class="attribution-group-via-link"
+                           onclick="event.stopPropagation();"
+                           data-navigable>
+                            {{ group.via_label }}
+                        </a>
+                    </div>
+                    <span class="attribution-group-count">
+                        {{ group.total_dependents }} top-level package{% if group.total_dependents != 1 %}s{% endif %}
+                    </span>
+                </div>
+                <div class="attribution-group-expand">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="attribution-group-content">
+                <!-- Top-level packages -->
+                <div class="mb-4">
+                    <div class="why-chain-section-header">
+                        <span class="why-chain-section-label">Needed by</span>
+                        <div class="why-chain-section-divider"></div>
+                    </div>
+                    <div class="top-level-packages">
+                        {% for pkg in group.top_level_packages[:8] %}
+                        <a href="/graph/node/{{ pkg.id }}"
+                           class="top-level-pill"
+                           title="{{ pkg.label }}"
+                           data-navigable>
+                            {{ pkg.label[:30] }}{% if pkg.label|length > 30 %}...{% endif %}
+                        </a>
+                        {% endfor %}
+                        {% if group.additional_count > 0 %}
+                        <span class="top-level-pill top-level-pill-more">
+                            +{{ group.additional_count }} more
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Shortest path visualization -->
+                <div>
+                    <div class="why-chain-section-header">
+                        <span class="why-chain-section-label">Shortest path</span>
+                        <div class="why-chain-section-divider"></div>
+                    </div>
+                    <div class="why-chain-path">
+                        {% for node in group.shortest_path %}
+                        <a href="/graph/node/{{ node.id }}"
+                           class="why-chain-path-node {% if loop.first %}why-chain-path-node-start{% elif loop.last %}why-chain-path-node-end{% else %}why-chain-path-node-middle{% endif %}"
+                           title="{{ node.label }}"
+                           data-navigable>
+                            {{ node.label[:25] }}{% if node.label|length > 25 %}...{% endif %}
+                        </a>
+                        {% if not loop.last %}
+                        <span class="why-chain-path-arrow">&rarr;</span>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-xl font-semibold mb-4">Attribution Paths</h2>
+    <div class="why-chain-empty">
+        <svg class="why-chain-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="why-chain-empty-title">No Attribution Paths Found</p>
+        <p class="why-chain-empty-description">
+            This package may be an orphan or only reachable through excluded dependency types.
+            Try enabling build-time dependencies.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Direct Dependents -->
+{% if result.direct_dependents %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-semibold mb-4">Direct Dependents</h2>
+    <p class="text-slate-600 text-sm mb-4">
+        Packages that directly depend on <strong>{{ result.target.label }}</strong>
+    </p>
+
+    <div class="direct-dependents-grid">
+        {% for dep in result.direct_dependents[:24] %}
+        <a href="/graph/node/{{ dep.id }}"
+           class="direct-dependent-card"
+           title="{{ dep.label }}"
+           data-navigable>
+            <div class="direct-dependent-name">{{ dep.label }}</div>
+            <div class="direct-dependent-type">{{ dep.package_type or 'unknown' }}</div>
+        </a>
+        {% endfor %}
+        {% if result.direct_dependents|length > 24 %}
+        <div class="direct-dependent-card" style="background: transparent; cursor: default;">
+            <div class="text-slate-500 text-sm">
+                +{{ result.direct_dependents|length - 24 }} more dependents...
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toggle individual attribution group
+function toggleGroup(group) {
+    const wasExpanded = group.classList.contains('expanded');
+    group.classList.toggle('expanded');
+
+    // Update aria-expanded
+    const header = group.querySelector('.attribution-group-header');
+    if (header) {
+        header.setAttribute('aria-expanded', !wasExpanded);
+    }
+}
+
+// Expand all groups
+function expandAllGroups() {
+    document.querySelectorAll('.attribution-group').forEach(group => {
+        group.classList.add('expanded');
+        const header = group.querySelector('.attribution-group-header');
+        if (header) {
+            header.setAttribute('aria-expanded', 'true');
+        }
+    });
+}
+
+// Collapse all groups
+function collapseAllGroups() {
+    document.querySelectorAll('.attribution-group').forEach(group => {
+        group.classList.remove('expanded');
+        const header = group.querySelector('.attribution-group-header');
+        if (header) {
+            header.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+// Export dropdown toggle (8E-010)
+function toggleExportDropdown() {
+    const menu = document.getElementById('export-dropdown-menu');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.querySelector('.export-dropdown');
+    const menu = document.getElementById('export-dropdown-menu');
+    if (dropdown && menu && !dropdown.contains(event.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+// Close dropdown on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const menu = document.getElementById('export-dropdown-menu');
+        if (menu) {
+            menu.classList.add('hidden');
+        }
+    }
+});
+
+// Auto-expand first group on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const firstGroup = document.querySelector('.attribution-group');
+    if (firstGroup) {
+        toggleGroup(firstGroup);
+    }
+
+    // Initialize cross-view state with current node and why chain settings
+    if (window.CrossViewState) {
+        CrossViewState.updateContext({
+            nodeId: {{ result.target.id }},
+            importId: {{ import_info.id }},
+            whyChainMaxDepth: {{ max_depth }},
+            whyChainMaxGroups: {{ max_groups }},
+            includeBuildDeps: {{ 'true' if include_build_deps else 'false' }}
+        });
+    }
+});
+</script>
+{% endblock %}

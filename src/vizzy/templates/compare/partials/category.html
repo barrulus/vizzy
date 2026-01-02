@@ -1,0 +1,35 @@
+<!-- Category package list partial -->
+<ul class="space-y-1 max-h-64 overflow-y-auto">
+    {% for diff in diffs %}
+    <li class="text-sm">
+        {% if side == 'left' and diff.left_node %}
+        <a href="/graph/node/{{ diff.left_node.id }}"
+           class="block p-2 hover:bg-red-50 rounded truncate text-slate-700 hover:text-red-700 transition"
+           title="{{ diff.label }}">
+            {{ diff.label }}
+            {% if diff.left_node.closure_size %}
+            <span class="text-xs text-slate-400 ml-1">({{ diff.left_node.closure_size }} deps)</span>
+            {% endif %}
+        </a>
+        {% elif side == 'right' and diff.right_node %}
+        <a href="/graph/node/{{ diff.right_node.id }}"
+           class="block p-2 hover:bg-green-50 rounded truncate text-slate-700 hover:text-green-700 transition"
+           title="{{ diff.label }}">
+            {{ diff.label }}
+            {% if diff.right_node.closure_size %}
+            <span class="text-xs text-slate-400 ml-1">({{ diff.right_node.closure_size }} deps)</span>
+            {% endif %}
+        </a>
+        {% else %}
+        <span class="block p-2 truncate text-slate-500">{{ diff.label }}</span>
+        {% endif %}
+    </li>
+    {% else %}
+    <li class="text-sm text-slate-400 italic p-2">No packages in this category</li>
+    {% endfor %}
+</ul>
+{% if diffs|length > 20 %}
+<p class="text-xs text-slate-400 mt-2 text-center">
+    Showing {{ diffs|length }} packages
+</p>
+{% endif %}

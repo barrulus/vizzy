@@ -6,34 +6,173 @@
     <title>{% block title %}Vizzy{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/navigation.css">
+    <link rel="stylesheet" href="/static/css/graph-controls.css">
+    <link rel="stylesheet" href="/static/css/keyboard.css">
+    <link rel="stylesheet" href="/static/css/why-chain.css">
+    <link rel="stylesheet" href="/static/css/semantic-zoom.css">
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+    <link rel="stylesheet" href="/static/css/onboarding.css">
+    <link rel="stylesheet" href="/static/css/cross-view-state.css">
     <style>
-        .graph-container {
-            overflow: auto;
-            max-height: calc(100vh - 200px);
+        /* URL State Management - Selected node styles */
+        [data-node-id].selected,
+        .node-list a.selected {
+            background-color: #dbeafe !important;
+            outline: 2px solid #3b82f6;
+            outline-offset: -2px;
         }
-        .graph-container svg {
-            max-width: none;
+
+        /* Focus ring for keyboard navigation */
+        [data-node-id]:focus,
+        .node-list a:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
         }
-        .graph-container svg a:hover polygon,
-        .graph-container svg a:hover ellipse {
-            stroke: #1e293b;
-            stroke-width: 3px;
+
+        /* Screen reader only utility class */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
-    <nav class="bg-slate-800 text-white px-4 py-3">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <a href="/" class="text-xl font-bold">Vizzy</a>
-            {% block nav_extra %}{% endblock %}
+    {# Skip links for accessibility - multiple targets #}
+    <nav class="skip-links" aria-label="Skip navigation">
+        <a href="#main-content" class="skip-link">Skip to main content</a>
+        {% if import_info %}
+        <a href="#search-results" class="skip-link" style="left: 12rem;">Skip to search</a>
+        {% endif %}
+    </nav>
+
+    {# Live region for screen reader announcements #}
+    <div id="a11y-announcer"
+         class="a11y-announcer"
+         aria-live="polite"
+         aria-atomic="true"
+         role="status"></div>
+
+    {# Alert region for urgent announcements #}
+    <div id="a11y-alert"
+         class="a11y-announcer"
+         aria-live="assertive"
+         aria-atomic="true"
+         role="alert"></div>
+
+    {# Primary Navigation #}
+    <nav class="nav-primary" aria-label="Primary navigation" x-data="{ mobileOpen: false }">
+        <div class="nav-primary-container">
+            {# Logo and main links #}
+            <div class="flex items-center gap-2">
+                <a href="/" class="nav-brand" aria-label="Vizzy Home">Vizzy</a>
+
+                {# Mobile menu toggle #}
+                <button type="button"
+                        class="nav-mobile-toggle"
+                        @click="mobileOpen = !mobileOpen"
+                        aria-label="Toggle navigation menu"
+                        :aria-expanded="mobileOpen">
+                    <svg class="nav-mobile-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              x-show="!mobileOpen" d="M4 6h16M4 12h16M4 18h16"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              x-show="mobileOpen" x-cloak d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+
+                {# Navigation links #}
+                <div class="nav-links" :class="{ 'open': mobileOpen }">
+                    <a href="/" class="nav-link {% if request and request.url.path == '/' %}active{% endif %}">
+                        <svg class="nav-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        Home
+                    </a>
+                    <span class="nav-separator" aria-hidden="true">|</span>
+                    <a href="/compare" class="nav-link {% if request and '/compare' in request.url.path %}active{% endif %}">
+                        <svg class="nav-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
+                        Compare
+                    </a>
+                    <span class="nav-separator" aria-hidden="true">|</span>
+                    <a href="/baselines" class="nav-link {% if request and '/baselines' in request.url.path %}active{% endif %}">
+                        <svg class="nav-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        Baselines
+                    </a>
+
+                    {# Context display when viewing an import #}
+                    {% if import_info %}
+                    <div class="nav-context">
+                        <span class="nav-context-label">Viewing:</span>
+                        <span class="nav-context-value" title="{{ import_info.name }}">{{ import_info.name }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Right side: search and actions #}
+            <div class="flex items-center gap-3">
+                {% block nav_extra %}{% endblock %}
+
+                {# Quick actions menu #}
+                {% if import_info %}
+                {% include "partials/nav/quick_actions.html" %}
+                {% endif %}
+
+                {# Help & Onboarding button #}
+                <button type="button"
+                        onclick="window.vizzyOnboarding && window.vizzyOnboarding.toggleHelpOverlay()"
+                        class="nav-help-btn"
+                        aria-label="Help and onboarding"
+                        title="Help & Onboarding">
+                    <svg class="nav-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="nav-help-text hidden sm:inline-block">Help</span>
+                </button>
+            </div>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-4 py-6">
+    {# Secondary Navigation (tab-style) - shown when viewing an import #}
+    {% if import_info and show_secondary_nav is not defined or show_secondary_nav %}
+    {% include "partials/nav/secondary.html" %}
+    {% endif %}
+
+    {# Breadcrumb Navigation #}
+    {% if breadcrumbs or (import_info and show_breadcrumb is not defined or show_breadcrumb) %}
+    {% include "partials/nav/breadcrumb.html" %}
+    {% endif %}
+
+    <main id="main-content" class="max-w-7xl mx-auto px-4 py-6" role="main">
         {% block content %}{% endblock %}
     </main>
 
+    <script src="/static/js/graph-navigation.js"></script>
+    <script src="/static/js/semantic-zoom.js"></script>
+    <script src="/static/js/keyboard.js"></script>
+    <script src="/static/js/url-state.js"></script>
+    <script src="/static/js/onboarding.js"></script>
+    <script src="/static/js/accessibility.js"></script>
+    <script src="/static/js/cross-view-state.js"></script>
+    <script src="/static/js/view-context-ui.js"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

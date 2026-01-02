@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% set current_page = 'redundant' %}
+
+{% block title %}Redundant Links - {{ import_info.name }}{% endblock %}
+
+{% block nav_extra %}
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="search"
+           placeholder="Search packages..."
+           class="nav-search-input"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q"
+           aria-label="Search packages">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow p-6">
+    <h1 class="text-2xl font-bold mb-2">Redundant Dependency Links</h1>
+    <p class="text-slate-600 mb-6">
+        Edges that can be removed without changing the transitive closure of the dependency graph.
+        An edge A &rarr; C is redundant if there exists a path A &rarr; B &rarr; ... &rarr; C.
+        These represent inherited dependencies rather than direct requirements.
+    </p>
+
+    {% if redundant_links %}
+    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-blue-800">
+            <span class="font-semibold">Found {{ total_redundant }} redundant link{% if total_redundant != 1 %}s{% endif %}</span>
+            out of {{ import_info.edge_count }} total edges
+            ({{ "%.1f"|format(total_redundant / import_info.edge_count * 100) }}% redundancy).
+        </p>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Source
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Direct Edge
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Target
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Alternative Path (Bypass)
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-slate-200">
+                {% for link in redundant_links %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        <a href="/graph/node/{{ link.source_node.id }}"
+                           class="text-blue-600 hover:text-blue-800 hover:underline"
+                           data-navigable>
+                            <div class="font-medium truncate max-w-xs" title="{{ link.source_node.label }}">
+                                {{ link.source_node.label }}
+                            </div>
+                            <div class="text-xs text-slate-400">
+                                {{ link.source_node.package_type or 'unknown' }}
+                            </div>
+                        </a>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="text-slate-300 text-xl">&#8594;</span>
+                        <div class="text-xs text-red-500 mt-1">redundant</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <a href="/graph/node/{{ link.target_node.id }}"
+                           class="text-blue-600 hover:text-blue-800 hover:underline">
+                            <div class="font-medium truncate max-w-xs" title="{{ link.target_node.label }}">
+                                {{ link.target_node.label }}
+                            </div>
+                            <div class="text-xs text-slate-400">
+                                {{ link.target_node.package_type or 'unknown' }}
+                            </div>
+                        </a>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-wrap items-center gap-1 text-xs">
+                            {% for node in link.bypass_path %}
+                            <a href="/graph/node/{{ node.id }}"
+                               class="px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 transition truncate max-w-[120px]"
+                               title="{{ node.label }}">
+                                {{ node.label }}
+                            </a>
+                            {% if not loop.last %}
+                            <span class="text-slate-400">&rarr;</span>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 p-4 bg-slate-50 rounded-lg">
+        <h3 class="font-medium text-slate-700 mb-2">What does this mean?</h3>
+        <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside">
+            <li>Redundant edges indicate <em>inherited</em> dependencies vs <em>direct</em> requirements</li>
+            <li>The "bypass path" shows how the dependency is transitively included anyway</li>
+            <li>Removing redundant edges would simplify the graph without changing what gets built</li>
+            <li>High redundancy is normal in package graphs - it shows shared infrastructure</li>
+        </ul>
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">&#128269;</div>
+        <p class="text-lg text-slate-600">No redundant links detected.</p>
+        <p class="text-sm text-slate-500 mt-2">
+            This could mean the graph is already minimal, or all edges represent direct dependencies.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Related Analysis Links -->
+<div class="mt-6 bg-white rounded-lg shadow p-4">
+    <h3 class="font-semibold mb-3">Related Analysis</h3>
+    <div class="flex flex-wrap gap-3">
+        <a href="/analyze/duplicates/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Duplicate Derivations
+        </a>
+        <a href="/analyze/loops/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Circular Dependencies
+        </a>
+        <a href="/analyze/path/{{ import_info.id }}"
+           class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+            Path Finder
+        </a>
+    </div>
+</div>
+{% endblock %}

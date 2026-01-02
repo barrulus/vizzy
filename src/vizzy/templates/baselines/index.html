@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% set current_page = 'baselines' %}
+{% set show_secondary_nav = false %}
+{% set breadcrumbs = [
+    {'label': 'Baselines'}
+] %}
+
+{% block title %}Manage Baselines - Vizzy{% endblock %}
+
+{% block nav_extra %}
+{# No search in baselines view #}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Manage Baselines</h1>
+            <p class="text-slate-600 mt-1">
+                Baselines are saved configurations you can compare against.
+            </p>
+        </div>
+        <a href="/compare" class="px-4 py-2 text-blue-600 hover:text-blue-800 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Compare
+        </a>
+    </div>
+
+    {% if not baselines %}
+    <div class="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+        <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+        <h2 class="text-lg font-semibold text-slate-700 mb-2">No Baselines Yet</h2>
+        <p class="text-slate-600 mb-4">
+            Create a baseline from any import to use it for future comparisons.
+        </p>
+        <a href="/compare" class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+            Go to Compare
+        </a>
+    </div>
+    {% else %}
+
+    <!-- System Baselines -->
+    {% set system_baselines = baselines|selectattr('is_system_baseline')|list %}
+    {% if system_baselines %}
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            System Baselines
+        </h2>
+        <div class="space-y-3">
+            {% for baseline in system_baselines %}
+            <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-400">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-slate-900">{{ baseline.name }}</h3>
+                        <p class="text-sm text-slate-500 mt-1">{{ baseline.description or 'System baseline' }}</p>
+                        <div class="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                            <span>{{ baseline.node_count|int }} packages</span>
+                            <span>{{ baseline.edge_count|int }} edges</span>
+                            <span>Created {{ baseline.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        {% if baseline.tags %}
+                        <div class="flex gap-1 mt-2">
+                            {% for tag in baseline.tags %}
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-sm text-slate-500">
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">System</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- User Baselines -->
+    {% set user_baselines = baselines|rejectattr('is_system_baseline')|list %}
+    {% if user_baselines %}
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            User Baselines
+        </h2>
+        <div class="space-y-3">
+            {% for baseline in user_baselines %}
+            <div class="bg-white rounded-lg shadow p-4" id="baseline-{{ baseline.id }}">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-semibold text-slate-900 baseline-name">{{ baseline.name }}</h3>
+                            <button class="text-slate-400 hover:text-blue-500 edit-name-btn"
+                                    onclick="editBaselineName({{ baseline.id }}, '{{ baseline.name }}')"
+                                    title="Rename">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-sm text-slate-500 mt-1">{{ baseline.description or 'User baseline' }}</p>
+                        <div class="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                            <span>{{ baseline.node_count|int }} packages</span>
+                            <span>{{ baseline.edge_count|int }} edges</span>
+                            <span>Created {{ baseline.created_at.strftime('%Y-%m-%d') }}</span>
+                            {% if baseline.source_import_id %}
+                            <span class="text-blue-500">From import #{{ baseline.source_import_id }}</span>
+                            {% endif %}
+                        </div>
+                        {% if baseline.tags %}
+                        <div class="flex gap-1 mt-2">
+                            {% for tag in baseline.tags %}
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                onclick="deleteBaseline({{ baseline.id }}, '{{ baseline.name }}')"
+                                title="Delete baseline">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Create New Baseline -->
+    {% if imports %}
+    <div class="mt-8 bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4">Create New Baseline</h2>
+        <form id="create-baseline-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="import_id" class="block text-sm font-medium text-slate-700 mb-1">
+                        Source Import
+                    </label>
+                    <select name="import_id" id="import_id" required
+                            class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        {% for imp in imports %}
+                        <option value="{{ imp.id }}">{{ imp.name }} ({{ imp.node_count|int }} packages)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="baseline_name" class="block text-sm font-medium text-slate-700 mb-1">
+                        Baseline Name
+                    </label>
+                    <input type="text" name="name" id="baseline_name" required
+                           placeholder="e.g., My Server - Stable"
+                           class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div>
+                <label for="baseline_description" class="block text-sm font-medium text-slate-700 mb-1">
+                    Description (optional)
+                </label>
+                <input type="text" name="description" id="baseline_description"
+                       placeholder="e.g., Configuration before adding new services"
+                       class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex items-center gap-4">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-500 text-white font-medium rounded hover:bg-blue-600 transition">
+                    Create Baseline
+                </button>
+                <div id="create-result" class="text-sm"></div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function editBaselineName(id, currentName) {
+    const newName = prompt('Enter new baseline name:', currentName);
+    if (!newName || newName === currentName) return;
+
+    try {
+        const response = await fetch(`/api/baselines/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+
+        if (response.ok) {
+            const container = document.getElementById(`baseline-${id}`);
+            const nameEl = container.querySelector('.baseline-name');
+            nameEl.textContent = newName;
+        } else {
+            alert('Failed to rename baseline');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error renaming baseline');
+    }
+}
+
+async function deleteBaseline(id, name) {
+    if (!confirm(`Are you sure you want to delete baseline "${name}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/baselines/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            const container = document.getElementById(`baseline-${id}`);
+            container.style.opacity = '0';
+            setTimeout(() => container.remove(), 300);
+        } else {
+            const data = await response.json();
+            alert(data.detail || 'Failed to delete baseline');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error deleting baseline');
+    }
+}
+
+document.getElementById('create-baseline-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const importId = formData.get('import_id');
+    const name = formData.get('name');
+    const description = formData.get('description');
+
+    const resultEl = document.getElementById('create-result');
+    resultEl.textContent = 'Creating...';
+    resultEl.className = 'text-sm text-slate-500';
+
+    try {
+        const response = await fetch(`/api/baselines/from-import/${importId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                description: description || null,
+                tags: [],
+                is_system_baseline: false
+            })
+        });
+
+        if (response.ok) {
+            resultEl.textContent = 'Baseline created successfully!';
+            resultEl.className = 'text-sm text-green-600';
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            const data = await response.json();
+            resultEl.textContent = data.detail || 'Failed to create baseline';
+            resultEl.className = 'text-sm text-red-600';
+        }
+    } catch (err) {
+        console.error(err);
+        resultEl.textContent = 'Error creating baseline';
+        resultEl.className = 'text-sm text-red-600';
+    }
+});
+</script>
+{% endblock %}

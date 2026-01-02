@@ -1,17 +1,23 @@
 {% extends "base.html" %}
 
+{% set current_page = 'cluster' %}
+
 {% block title %}{{ package_type }} - {{ import_info.name }} - Vizzy{% endblock %}
 
 {% block nav_extra %}
-<div class="flex items-center space-x-4">
-    <span class="text-slate-400">{{ import_info.name }}</span>
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
     <input type="search"
            placeholder="Search packages..."
-           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           class="nav-search-input"
            hx-get="/search?import_id={{ import_info.id }}"
            hx-trigger="keyup changed delay:300ms"
            hx-target="#search-results"
-           name="q">
+           name="q"
+           aria-label="Search packages">
 </div>
 {% endblock %}
 
@@ -19,24 +25,14 @@
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <!-- Sidebar -->
     <div class="lg:col-span-1 space-y-4">
-        <!-- Breadcrumb -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <nav class="text-sm">
-                <a href="/" class="text-blue-600 hover:underline">Home</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <a href="/explore/{{ import_info.id }}" class="text-blue-600 hover:underline">{{ import_info.name }}</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <span class="text-slate-600">{{ package_type }}</span>
-            </nav>
-        </div>
-
         <!-- Nodes List -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">{{ package_type }} ({{ nodes | length }})</h3>
-            <ul class="space-y-1 text-sm max-h-96 overflow-y-auto">
+            <ul class="node-list space-y-1 text-sm max-h-96 overflow-y-auto">
                 {% for node in nodes %}
                 <li>
                     <a href="/graph/node/{{ node.id }}"
+                       data-node-id="{{ node.id }}"
                        class="block p-2 rounded hover:bg-slate-50 truncate"
                        title="{{ node.label }}">
                         {{ node.label }}
@@ -54,8 +50,14 @@
     <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
         <h2 class="text-lg font-semibold mb-4">{{ package_type }}</h2>
         <p class="text-sm text-slate-500 mb-4">Click a node to see its details and dependencies.</p>
-        <div class="graph-container border border-slate-200 rounded">
+        <div class="graph-container border border-slate-200 rounded"
+             data-semantic-zoom="true"
+             data-import-id="{{ import_info.id }}"
+             data-package-type="{{ package_type }}">
             {{ svg | safe }}
+        </div>
+        <div class="semantic-zoom-info mt-2">
+            <strong>Semantic Zoom:</strong> Scroll to zoom. Content detail changes at different zoom levels.
         </div>
     </div>
 </div>

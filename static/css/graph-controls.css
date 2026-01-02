@@ -1,0 +1,103 @@
+/* Graph Controls - Zoom/Pan UI */
+
+.graph-controls {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 10;
+}
+
+.graph-controls button {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    color: #475569;
+}
+
+.graph-controls button:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.graph-controls button:active {
+    background: #e2e8f0;
+}
+
+/* Graph container enhancements for pan/zoom */
+.graph-container {
+    cursor: grab;
+    overflow: hidden;
+    position: relative;
+    min-height: 400px;
+    height: 70vh;
+    max-height: calc(100vh - 220px);
+    /* Prevent text selection while panning */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* GPU acceleration for smooth transforms */
+.graph-container svg .pan-zoom-group {
+    will-change: transform;
+}
+
+.graph-container.panning {
+    cursor: grabbing;
+}
+
+.graph-container svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Ensure the pan-zoom group doesn't interfere with link clicks */
+.graph-container svg .pan-zoom-group a {
+    cursor: pointer;
+}
+
+/* Link hover states still work */
+.graph-container svg a polygon,
+.graph-container svg a ellipse {
+    transition: stroke-width 0.15s ease;
+}
+
+.graph-container svg a:hover polygon,
+.graph-container svg a:hover ellipse {
+    stroke-width: 3px !important;
+    stroke: #1e293b;
+}
+
+/* Visual feedback during interaction */
+.graph-container:active {
+    cursor: grabbing;
+}
+
+/* Tooltip for controls */
+.graph-controls button[title] {
+    position: relative;
+}
+
+/* Responsive controls */
+@media (max-width: 640px) {
+    .graph-controls {
+        top: 0.25rem;
+        right: 0.25rem;
+    }
+
+    .graph-controls button {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.4rem;
+    }
+}

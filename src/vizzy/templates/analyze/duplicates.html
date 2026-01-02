@@ -1,26 +1,27 @@
 {% extends "base.html" %}
 
+{% set current_page = 'duplicates' %}
+
 {% block title %}Duplicate Derivations - {{ import_info.name }}{% endblock %}
 
 {% block nav_extra %}
-<form action="/search" method="GET" class="flex items-center gap-2">
-    <input type="hidden" name="import_id" value="{{ import_info.id }}">
-    <input type="text" name="q" placeholder="Search packages..."
-           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-</form>
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="search"
+           placeholder="Search packages..."
+           class="nav-search-input"
+           hx-get="/search?import_id={{ import_info.id }}"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-results"
+           name="q"
+           aria-label="Search packages">
+</div>
 {% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <nav class="text-sm text-slate-500">
-        <a href="/" class="hover:text-slate-700">Home</a>
-        <span class="mx-2">&gt;</span>
-        <a href="/explore/{{ import_info.id }}" class="hover:text-slate-700">{{ import_info.name }}</a>
-        <span class="mx-2">&gt;</span>
-        <span class="text-slate-700">Duplicate Analysis</span>
-    </nav>
-</div>
-
 <div class="bg-white rounded-lg shadow p-6">
     <h1 class="text-2xl font-bold mb-2">Duplicate Derivations</h1>
     <p class="text-slate-600 mb-6">
@@ -40,7 +41,8 @@
             <div class="grid grid-cols-1 md:grid-cols-{{ group.count }} gap-3">
                 {% for node in group.nodes %}
                 <a href="/graph/node/{{ node.id }}"
-                   class="block p-3 bg-slate-50 rounded hover:bg-slate-100 transition">
+                   class="block p-3 bg-slate-50 rounded hover:bg-slate-100 transition"
+                   data-navigable>
                     <div class="text-xs font-mono text-slate-500 mb-1">
                         {{ node.drv_hash[:16] }}...
                     </div>
@@ -51,10 +53,14 @@
                 {% endfor %}
             </div>
 
-            <div class="mt-3">
+            <div class="mt-3 flex flex-wrap gap-4">
                 <a href="/analyze/compare/{{ import_info.id }}/{{ group.label }}"
                    class="text-sm text-blue-600 hover:text-blue-800">
                     Compare variants &rarr;
+                </a>
+                <a href="/analyze/matrix/{{ import_info.id }}/{{ group.label }}"
+                   class="text-sm text-blue-600 hover:text-blue-800">
+                    View matrix &rarr;
                 </a>
             </div>
         </div>

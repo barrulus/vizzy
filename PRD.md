@@ -75,6 +75,8 @@ Vizzy solves this by providing progressive, server-rendered exploration with Pos
 │  ├── GET  /analyze/compare/{id}/{label}  Compare duplicate variants│
 │  ├── GET  /analyze/path/{id}    Find path between two nodes      │
 │  ├── GET  /analyze/sankey/{id}/{label}  Sankey diagram for variants│
+│  ├── GET  /analyze/loops/{id}   Circular dependency detection    │
+│  ├── GET  /analyze/redundant/{id}  Redundant link detection      │
 │  ├── POST /import/file          Upload DOT file                  │
 │  ├── POST /import/existing      Import DOT from filesystem       │
 │  ├── POST /import/nix           Import from NixOS host config    │
@@ -232,19 +234,24 @@ Shortest dependency path between two nodes:
 - Show path length and intermediate nodes
 - Answer: "Why does X depend on Y?"
 
-### 4. Loop Detection
+### 4. Loop Detection (`/analyze/loops/{import_id}`)
 
-- Run Tarjan's SCC algorithm at import time
-- Cache results in analysis table
-- Display loops as highlighted subgraphs
-- List all nodes participating in cycles
+Circular dependency detection using Tarjan's Strongly Connected Components algorithm:
+- Implemented in Python using Tarjan's SCC algorithm
+- Finds all strongly connected components with more than one node
+- Extracts a simple cycle path within each SCC for visualization
+- Displays all nodes participating in cycles with links to node details
+- Shows cycle count and total affected nodes
 - Loops indicate circular dependencies (unusual in Nix but possible with overrides)
 
-### 5. Redundant Link Detection
+### 5. Redundant Link Detection (`/analyze/redundant/{import_id}`)
 
-- Compute transitive reduction of the graph
-- Mark edges that are redundant (A→C when A→B→C exists)
-- Visualize which dependencies could be removed
+Transitive reduction analysis to identify inherited dependencies:
+- Uses PostgreSQL recursive CTE to find alternative paths
+- Identifies edges A→C where a path A→B→...→C exists (depth limit: 5)
+- Shows the bypass path that makes each edge redundant
+- Provides `mark_redundant_edges()` function to update the `is_redundant` flag in database
+- Displays redundancy percentage and links to affected nodes
 - Helps understand true vs inherited dependencies
 
 ### 6. NixOS Configuration Integration
@@ -316,10 +323,18 @@ system-path                      system-path
 
 ### 8. Nix Metadata Integration
 
-Metadata is fetched **eagerly at import time** (not on-demand) since:
-- Import is a one-time operation
-- Data is static once loaded
-- Avoids latency during exploration
+Metadata fetching supports both eager (at import time) and on-demand (when viewing a node) modes:
+
+**Eager fetching** (optional at import):
+- Enabled via `fetch_metadata_on_import=True` parameter
+- Processes nodes in batches of 50 for efficiency
+- Limited to configurable `max_nodes` (default 1000) to prevent import timeouts
+- Prioritizes nodes by depth (closest to root first)
+
+**On-demand fetching** (default):
+- Metadata fetched when viewing a node's detail page
+- Cached in database after first fetch
+- Transparent to user - metadata appears on node detail page
 
 For each node, fetch rich metadata via:
 
@@ -327,14 +342,16 @@ For each node, fetch rich metadata via:
 nix derivation show /nix/store/{hash}-{name}.drv
 ```
 
-Display:
-- Build inputs (with links to their nodes)
-- Environment variables
+Display (in Node Detail view):
+- System architecture (e.g., `x86_64-linux`)
 - Builder path
-- Output paths
-- System architecture
+- Build inputs count (derivations)
+- Source inputs count
+- Output paths (out, dev, lib, etc.)
+- Version and package name (from env)
+- Source URL (if available)
 
-Cache results in `nodes.metadata` JSONB column.
+Cache results in `nodes.metadata` JSONB column as a summary extracted by `extract_metadata_summary()`.
 
 ---
 
@@ -456,7 +473,9 @@ vizzy/
 │           │   ├── duplicates.html
 │           │   ├── compare.html
 │           │   ├── path.html
-│           │   └── sankey.html
+│           │   ├── sankey.html
+│           │   ├── loops.html
+│           │   └── redundant.html
 │           └── partials/
 │               └── search_results.html
 ├── static/
@@ -531,8 +550,8 @@ VIZZY_DEBUG=false         # optional
 - [x] Path finding between nodes
 - [x] Duplicate package detection
 - [x] Sankey visualization for variants
-- [ ] Loop detection
-- [ ] Redundant link detection
+- [x] Loop detection
+- [x] Redundant link detection
 
 ### Phase 4: NixOS Integration ✅
 - [x] Flake discovery and parsing
@@ -540,7 +559,7 @@ VIZZY_DEBUG=false         # optional
 - [x] On-demand graph export from nix
 - [x] System packages enumeration
 - [x] Module-added packages view
-- [ ] Eager metadata fetching at import (partial - structure exists)
+- [x] Eager metadata fetching at import
 
 ### Phase 5: Host Comparison
 - [ ] Full diff between two hosts

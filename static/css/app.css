@@ -1,26 +1,7 @@
 /* Additional styles for Vizzy */
 
-/* Graph container scrolling */
-.graph-container {
-    overflow: auto;
-    max-height: calc(100vh - 200px);
-    cursor: grab;
-}
-
-.graph-container:active {
-    cursor: grabbing;
-}
-
-/* SVG link hover states */
-.graph-container svg a polygon,
-.graph-container svg a ellipse {
-    transition: stroke-width 0.15s ease;
-}
-
-.graph-container svg a:hover polygon,
-.graph-container svg a:hover ellipse {
-    stroke-width: 3px !important;
-}
+/* Note: Graph container styles are in graph-controls.css */
+/* Note: Navigation styles are in navigation.css */
 
 /* Smooth transitions */
 a {
@@ -31,4 +12,564 @@ a {
 input[type="search"]:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* =============================================================================
+   Essentiality Badge Styles (Phase 8E-007)
+   ============================================================================= */
+
+.essentiality-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.essentiality-badge svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.essentiality-badge-essential {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.essentiality-badge-essential-single {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.essentiality-badge-essential-deep {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+.essentiality-badge-build_only {
+    background-color: #f3e8ff;
+    color: #6b21a8;
+}
+
+.essentiality-badge-removable {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.essentiality-badge-orphan {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+/* =============================================================================
+   Removal Impact Analysis Styles (Phase 8E-007)
+   ============================================================================= */
+
+.removal-impact-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* Impact Summary Banner */
+.removal-impact-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+}
+
+.removal-impact-safe {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+}
+
+.removal-impact-low {
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.removal-impact-medium {
+    background-color: #fefce8;
+    border-color: #fde047;
+}
+
+.removal-impact-high {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.removal-impact-icon {
+    flex-shrink: 0;
+}
+
+.removal-impact-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.removal-impact-text {
+    flex-grow: 1;
+}
+
+.removal-impact-headline {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+}
+
+.removal-impact-guidance {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* Impact Metrics Grid */
+.removal-impact-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .removal-impact-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.removal-impact-metric {
+    text-align: center;
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+}
+
+.removal-impact-metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.removal-impact-metric-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-top: 0.25rem;
+}
+
+/* Affected Packages */
+.removal-impact-affected,
+.removal-impact-unique-deps {
+    padding-top: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.removal-impact-affected-header,
+.removal-impact-unique-header {
+    margin-bottom: 0.5rem;
+}
+
+.removal-impact-affected-label,
+.removal-impact-unique-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.removal-impact-affected-list,
+.removal-impact-unique-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.removal-impact-affected-pkg,
+.removal-impact-unique-dep {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.removal-impact-affected-pkg:hover,
+.removal-impact-unique-dep:hover {
+    background-color: #fecaca;
+}
+
+.removal-impact-unique-dep {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.removal-impact-unique-dep:hover {
+    background-color: #e2e8f0;
+}
+
+.removal-impact-affected-more,
+.removal-impact-unique-more {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+}
+
+/* Depth Information */
+.removal-impact-depth {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.removal-impact-depth-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.removal-impact-depth-label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.removal-impact-depth-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* =============================================================================
+   Why Chain Summary Styles
+   ============================================================================= */
+
+.why-chain-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.why-chain-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.why-chain-summary-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.why-chain-summary-target {
+    color: #2563eb;
+    font-family: ui-monospace, monospace;
+}
+
+.why-chain-summary-description {
+    color: #64748b;
+}
+
+.why-chain-summary-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.why-chain-stat-value {
+    color: #1e293b;
+}
+
+.why-chain-stat-cached {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* =============================================================================
+   Why Chain Options Form
+   ============================================================================= */
+
+.why-chain-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+.why-chain-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.why-chain-option-label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.why-chain-option select {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background-color: white;
+}
+
+.why-chain-option-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.why-chain-update-btn {
+    padding: 0.5rem 1rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.why-chain-update-btn:hover {
+    background-color: #1d4ed8;
+}
+
+/* =============================================================================
+   Attribution Groups
+   ============================================================================= */
+
+.attribution-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.attribution-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.attribution-group-header:hover {
+    background-color: #f1f5f9;
+}
+
+.attribution-group-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.attribution-group-via {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.attribution-group-via-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.attribution-group-via-link {
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.attribution-group-via-link:hover {
+    text-decoration: underline;
+}
+
+.attribution-group-count {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.attribution-group-expand {
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+}
+
+.attribution-group.expanded .attribution-group-expand {
+    transform: rotate(180deg);
+}
+
+.attribution-group-content {
+    display: none;
+    padding: 1rem;
+    background-color: white;
+    border-top: 1px solid #e2e8f0;
+}
+
+.attribution-group.expanded .attribution-group-content {
+    display: block;
+}
+
+/* Section Headers */
+.why-chain-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.why-chain-section-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.why-chain-section-divider {
+    flex-grow: 1;
+    height: 1px;
+    background-color: #e2e8f0;
+}
+
+/* Top Level Packages */
+.top-level-packages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.top-level-pill {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.top-level-pill:hover {
+    background-color: #bfdbfe;
+}
+
+.top-level-pill-more {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+/* Path Visualization */
+.why-chain-path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.why-chain-path-node {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    background-color: #f1f5f9;
+    color: #1e293b;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.why-chain-path-node:hover {
+    background-color: #e2e8f0;
+}
+
+.why-chain-path-node-start {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.why-chain-path-node-end {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.why-chain-path-arrow {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+/* Empty State */
+.why-chain-empty {
+    text-align: center;
+    padding: 2rem;
+}
+
+.why-chain-empty-icon {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 1rem;
+    color: #94a3b8;
+}
+
+.why-chain-empty-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.why-chain-empty-description {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* Direct Dependents Grid */
+.direct-dependents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.direct-dependent-card {
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.direct-dependent-card:hover {
+    border-color: #cbd5e1;
+    background-color: #f1f5f9;
+}
+
+.direct-dependent-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+.direct-dependent-type {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.25rem;
 }

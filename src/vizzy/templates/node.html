@@ -1,17 +1,23 @@
 {% extends "base.html" %}
 
+{% set current_page = 'node' %}
+
 {% block title %}{{ node.label }} - Vizzy{% endblock %}
 
 {% block nav_extra %}
-<div class="flex items-center space-x-4">
-    <span class="text-slate-400">{{ import_info.name }}</span>
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
     <input type="search"
            placeholder="Search packages..."
-           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           class="nav-search-input"
            hx-get="/search?import_id={{ import_info.id }}"
            hx-trigger="keyup changed delay:300ms"
            hx-target="#search-results"
-           name="q">
+           name="q"
+           aria-label="Search packages">
 </div>
 {% endblock %}
 
@@ -19,19 +25,6 @@
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <!-- Sidebar -->
     <div class="lg:col-span-1 space-y-4">
-        <!-- Breadcrumb -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <nav class="text-sm">
-                <a href="/" class="text-blue-600 hover:underline">Home</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <a href="/explore/{{ import_info.id }}" class="text-blue-600 hover:underline">{{ import_info.name }}</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <a href="/graph/cluster/{{ import_info.id }}/{{ node.package_type }}" class="text-blue-600 hover:underline">{{ node.package_type }}</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <span class="text-slate-600 truncate block" title="{{ node.label }}">{{ node.label[:30] }}{% if node.label|length > 30 %}...{% endif %}</span>
-            </nav>
-        </div>
-
         <!-- Node Info -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">Node Details</h3>
@@ -63,10 +56,86 @@
             </dl>
         </div>
 
+        <!-- Nix Metadata -->
+        {% if metadata %}
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold mb-3">Derivation Metadata</h3>
+            <dl class="space-y-2 text-sm">
+                {% if metadata.system %}
+                <div>
+                    <dt class="text-slate-500">System</dt>
+                    <dd class="font-mono text-xs">{{ metadata.system }}</dd>
+                </div>
+                {% endif %}
+                {% if metadata.builder %}
+                <div>
+                    <dt class="text-slate-500">Builder</dt>
+                    <dd class="font-mono text-xs break-all">{{ metadata.builder }}</dd>
+                </div>
+                {% endif %}
+                {% if metadata.input_drv_count %}
+                <div>
+                    <dt class="text-slate-500">Build Inputs</dt>
+                    <dd class="font-medium">{{ metadata.input_drv_count }} derivations</dd>
+                </div>
+                {% endif %}
+                {% if metadata.input_src_count %}
+                <div>
+                    <dt class="text-slate-500">Source Inputs</dt>
+                    <dd class="font-medium">{{ metadata.input_src_count }} sources</dd>
+                </div>
+                {% endif %}
+                {% if metadata.outputs %}
+                <div>
+                    <dt class="text-slate-500">Outputs</dt>
+                    <dd>
+                        <ul class="space-y-1">
+                            {% for name, path in metadata.outputs.items() %}
+                            <li class="font-mono text-xs break-all">
+                                <span class="text-slate-600">{{ name }}:</span>
+                                {{ path[:50] }}{% if path|length > 50 %}...{% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </dd>
+                </div>
+                {% endif %}
+                {% if metadata.env %}
+                    {% if metadata.env.version %}
+                    <div>
+                        <dt class="text-slate-500">Version</dt>
+                        <dd class="font-medium">{{ metadata.env.version }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if metadata.env.pname %}
+                    <div>
+                        <dt class="text-slate-500">Package Name</dt>
+                        <dd class="font-medium">{{ metadata.env.pname }}</dd>
+                    </div>
+                    {% endif %}
+                {% endif %}
+                {% if metadata.source %}
+                <div>
+                    <dt class="text-slate-500">Source</dt>
+                    <dd class="font-mono text-xs break-all">{{ metadata.source[:80] }}{% if metadata.source|length > 80 %}...{% endif %}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
+
         <!-- Actions -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">Analysis</h3>
             <ul class="space-y-2 text-sm">
+                <li>
+                    <a href="/analyze/why/{{ import_info.id }}/{{ node.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800"
+                       title="Why is this package in the closure? (Press 'w')">
+                        Why Chain
+                        <span class="text-xs text-slate-400 ml-1">(w)</span>
+                    </a>
+                </li>
                 <li>
                     <a href="/visual/{{ node.id }}"
                        class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
@@ -91,12 +160,14 @@
         <!-- Dependencies -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">Dependencies ({{ dependencies | length }})</h3>
-            <ul class="space-y-1 text-sm max-h-48 overflow-y-auto">
+            <ul class="node-list space-y-1 text-sm max-h-48 overflow-y-auto">
                 {% for dep in dependencies[:50] %}
                 <li>
                     <a href="/graph/node/{{ dep.id }}"
+                       data-node-id="{{ dep.id }}"
                        class="block p-1 rounded hover:bg-slate-50 truncate text-blue-600 hover:underline"
-                       title="{{ dep.label }}">
+                       title="{{ dep.label }}"
+                       data-navigable>
                         {{ dep.label }}
                     </a>
                 </li>
@@ -110,12 +181,14 @@
         <!-- Dependents -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">Dependents ({{ dependents | length }})</h3>
-            <ul class="space-y-1 text-sm max-h-48 overflow-y-auto">
+            <ul class="node-list space-y-1 text-sm max-h-48 overflow-y-auto">
                 {% for dep in dependents[:50] %}
                 <li>
                     <a href="/graph/node/{{ dep.id }}"
+                       data-node-id="{{ dep.id }}"
                        class="block p-1 rounded hover:bg-slate-50 truncate text-blue-600 hover:underline"
-                       title="{{ dep.label }}">
+                       title="{{ dep.label }}"
+                       data-navigable>
                         {{ dep.label }}
                     </a>
                 </li>
@@ -132,14 +205,39 @@
 
     <!-- Main Graph -->
     <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold mb-4">{{ node.label }}</h2>
-        <p class="text-sm text-slate-500 mb-4">
-            Showing direct dependencies (right) and dependents (left).
-            Click a node to navigate.
-        </p>
-        <div class="graph-container border border-slate-200 rounded">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-semibold">{{ node.label }}</h2>
+                <p class="text-sm text-slate-500">
+                    Showing direct dependencies (right) and dependents (left).
+                    Click a node to navigate.
+                </p>
+            </div>
+            {% include "partials/share_context.html" %}
+        </div>
+        <div class="graph-container border border-slate-200 rounded"
+             data-semantic-zoom="true"
+             data-import-id="{{ import_info.id }}"
+             data-center-node-id="{{ node.id }}">
             {{ svg | safe }}
+        </div>
+        <div class="semantic-zoom-info mt-2">
+            <strong>Semantic Zoom:</strong> Scroll to zoom. Content detail changes at different zoom levels.
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize cross-view state with current node
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.CrossViewState) {
+        CrossViewState.updateContext({
+            nodeId: {{ node.id }},
+            importId: {{ import_info.id }}
+        });
+    }
+});
+</script>
 {% endblock %}

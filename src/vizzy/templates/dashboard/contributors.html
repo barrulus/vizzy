@@ -1,0 +1,27 @@
+{# Partial template for top contributors list - loaded via HTMX #}
+{% if contributors %}
+<div class="contributors-list" role="list" aria-label="Top contributors by closure size">
+    {% for contributor in contributors %}
+    <a href="/graph/node/{{ contributor.node_id }}"
+       class="contributor-item"
+       role="listitem"
+       data-navigable
+       title="{{ contributor.label }} - {{ contributor.closure_size }} derivations">
+        <span class="contributor-name">{{ contributor.label }}</span>
+        <div class="contributor-bar-container">
+            <div class="contributor-bar">
+                <div class="contributor-bar-fill type-{{ contributor.package_type or 'unknown' }}"
+                     style="width: {{ (contributor.closure_size / max_closure_size * 100)|round(1) }}%">
+                </div>
+            </div>
+        </div>
+        <span class="contributor-value">{{ "{:,}".format(contributor.closure_size) }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-slate-500 text-sm py-4">
+    <p>No top-level packages found.</p>
+    <p class="text-xs mt-1">Import metadata may need to be refreshed.</p>
+</div>
+{% endif %}

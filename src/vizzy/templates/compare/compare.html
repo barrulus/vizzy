@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% set current_page = 'compare' %}
+{% set show_secondary_nav = false %}
+{% set breadcrumbs = [
+    {'label': 'Compare', 'url': '/compare'},
+    {'label': left.name ~ ' vs ' ~ right.name}
+] %}
+
+{% block title %}{{ left.name }} vs {{ right.name }} - Vizzy{% endblock %}
+
+{% block nav_extra %}
+{# No search in compare view #}
+{% endblock %}
+
+{% block content %}
+<div class="comparison-container">
+    <!-- Header with config comparison -->
+    <header class="mb-8">
+        <div class="flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 mb-4">
+            <!-- Left Config Card -->
+            <div class="text-center p-4 bg-white rounded-lg shadow border-l-4 border-red-400 min-w-48">
+                <h2 class="font-bold text-lg">{{ left.name }}</h2>
+                <p class="text-slate-500">{{ (left.node_count or 0)|int }} packages</p>
+                <p class="text-xs text-slate-400 mt-1">
+                    {{ left.imported_at.strftime('%Y-%m-%d') }}
+                </p>
+            </div>
+
+            <!-- VS Badge -->
+            <div class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-slate-400">VS</span>
+                <a href="/compare?left={{ right.id }}&right={{ left.id }}"
+                   title="Swap configurations"
+                   class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Right Config Card -->
+            <div class="text-center p-4 bg-white rounded-lg shadow border-l-4 border-green-400 min-w-48">
+                <h2 class="font-bold text-lg">{{ right.name }}</h2>
+                <p class="text-slate-500">{{ (right.node_count or 0)|int }} packages</p>
+                <p class="text-xs text-slate-400 mt-1">
+                    {{ right.imported_at.strftime('%Y-%m-%d') }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <p class="text-center text-slate-600 max-w-2xl mx-auto">{{ summary }}</p>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-red-600">{{ left_only_count }}</div>
+            <div class="text-sm text-slate-500">Only in {{ left.name }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">{{ right_only_count }}</div>
+            <div class="text-sm text-slate-500">Only in {{ right.name }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-amber-600">{{ different_count }}</div>
+            <div class="text-sm text-slate-500">Different versions</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-slate-600">{{ same_count }}</div>
+            <div class="text-sm text-slate-500">Identical</div>
+        </div>
+    </div>
+
+    <!-- Three Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Only in Left -->
+        <section class="bg-white rounded-lg shadow p-4 border-t-4 border-red-400">
+            <h3 class="font-semibold mb-4 flex items-center justify-between">
+                <span>Only in {{ left.name }}</span>
+                <span class="text-slate-400 font-normal text-sm">({{ left_only_count }})</span>
+            </h3>
+
+            {% if left_by_category %}
+            <div id="left-categories" class="space-y-2">
+                {% for category, diffs in left_by_category.items() %}
+                <div class="category-group border border-slate-200 rounded">
+                    <button class="w-full flex justify-between items-center p-3 hover:bg-slate-50 rounded text-left"
+                            hx-get="/compare/partials/category/{{ left.id }}/{{ right.id }}/{{ category.value }}?side=left"
+                            hx-target="#left-{{ category.name }}-content"
+                            hx-swap="innerHTML"
+                            hx-trigger="click once"
+                            onclick="this.querySelector('svg').classList.toggle('rotate-180')">
+                        <span class="font-medium text-sm">{{ category.value }}</span>
+                        <span class="flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">{{ diffs|length }}</span>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </span>
+                    </button>
+                    <div id="left-{{ category.name }}-content" class="hidden px-3 pb-3"></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-400 text-sm italic">No unique packages</p>
+            {% endif %}
+        </section>
+
+        <!-- Shared / Different Versions -->
+        <section class="bg-white rounded-lg shadow p-4 border-t-4 border-amber-400">
+            <h3 class="font-semibold mb-4 flex items-center justify-between">
+                <span>Shared Packages</span>
+                <span class="text-slate-400 font-normal text-sm">({{ same_count + different_count }})</span>
+            </h3>
+
+            <div class="mb-4 p-3 bg-slate-50 rounded">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-600">Identical packages:</span>
+                    <span class="font-medium text-slate-800">{{ same_count }}</span>
+                </div>
+                <div class="flex items-center justify-between text-sm mt-1">
+                    <span class="text-amber-700">Different versions:</span>
+                    <span class="font-medium text-amber-700">{{ different_count }}</span>
+                </div>
+            </div>
+
+            {% if different_count > 0 %}
+            <button class="w-full text-left p-3 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded text-sm transition"
+                    hx-get="/compare/partials/versions/{{ left.id }}/{{ right.id }}"
+                    hx-target="#version-diffs"
+                    hx-swap="innerHTML"
+                    hx-trigger="click once"
+                    onclick="this.classList.add('hidden')">
+                <span class="text-amber-700 font-medium">Show version differences</span>
+                <span class="text-amber-600 block text-xs mt-1">
+                    {{ different_count }} packages have different derivations
+                </span>
+            </button>
+            <div id="version-diffs" class="mt-4"></div>
+            {% else %}
+            <p class="text-slate-400 text-sm italic">All shared packages are identical</p>
+            {% endif %}
+        </section>
+
+        <!-- Only in Right -->
+        <section class="bg-white rounded-lg shadow p-4 border-t-4 border-green-400">
+            <h3 class="font-semibold mb-4 flex items-center justify-between">
+                <span>Only in {{ right.name }}</span>
+                <span class="text-slate-400 font-normal text-sm">({{ right_only_count }})</span>
+            </h3>
+
+            {% if right_by_category %}
+            <div id="right-categories" class="space-y-2">
+                {% for category, diffs in right_by_category.items() %}
+                <div class="category-group border border-slate-200 rounded">
+                    <button class="w-full flex justify-between items-center p-3 hover:bg-slate-50 rounded text-left"
+                            hx-get="/compare/partials/category/{{ left.id }}/{{ right.id }}/{{ category.value }}?side=right"
+                            hx-target="#right-{{ category.name }}-content"
+                            hx-swap="innerHTML"
+                            hx-trigger="click once"
+                            onclick="this.querySelector('svg').classList.toggle('rotate-180')">
+                        <span class="font-medium text-sm">{{ category.value }}</span>
+                        <span class="flex items-center gap-2">
+                            <span class="text-slate-400 text-sm">{{ diffs|length }}</span>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </span>
+                    </button>
+                    <div id="right-{{ category.name }}-content" class="hidden px-3 pb-3"></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-400 text-sm italic">No unique packages</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-8 flex flex-wrap justify-center gap-4">
+        <a href="/compare"
+           class="px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-50 transition">
+            New Comparison
+        </a>
+        <a href="/compare/trace/{{ left.id }}/{{ right.id }}"
+           class="px-4 py-2 border border-purple-300 text-purple-700 rounded hover:bg-purple-50 transition">
+            Trace Package Path
+        </a>
+
+        <!-- Export Dropdown -->
+        <div class="relative inline-block" x-data="{ open: false }">
+            <button @click="open = !open"
+                    class="px-4 py-2 border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Report
+                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <div x-show="open"
+                 @click.outside="open = false"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-75"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="absolute right-0 mt-2 w-56 rounded-lg bg-white shadow-lg ring-1 ring-slate-200 z-50">
+                <div class="p-2">
+                    <p class="px-3 py-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Download Format</p>
+
+                    <a href="/compare/export/{{ left.id }}/{{ right.id }}?format=json"
+                       class="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div>
+                            <div class="font-medium">JSON</div>
+                            <div class="text-xs text-slate-500">Structured data for automation</div>
+                        </div>
+                    </a>
+
+                    <a href="/compare/export/{{ left.id }}/{{ right.id }}?format=csv"
+                       class="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded">
+                        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <div>
+                            <div class="font-medium">CSV</div>
+                            <div class="text-xs text-slate-500">Spreadsheet analysis</div>
+                        </div>
+                    </a>
+
+                    <a href="/compare/export/{{ left.id }}/{{ right.id }}?format=md"
+                       class="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div>
+                            <div class="font-medium">Markdown</div>
+                            <div class="text-xs text-slate-500">Human-readable report</div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="border-t border-slate-100 p-2">
+                    <button @click="$refs.previewModal.showModal(); open = false"
+                            class="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Preview before download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <dialog x-ref="previewModal" class="rounded-lg shadow-xl w-full max-w-4xl p-0 backdrop:bg-slate-900/50">
+        <div class="bg-white rounded-lg">
+            <div class="flex items-center justify-between p-4 border-b">
+                <h3 class="text-lg font-semibold">Export Preview</h3>
+                <button onclick="this.closest('dialog').close()"
+                        class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-4">
+                <!-- Format selector -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="loadPreview('json')"
+                            id="preview-btn-json"
+                            class="px-4 py-2 text-sm rounded border border-amber-300 bg-amber-50 text-amber-700 font-medium">
+                        JSON
+                    </button>
+                    <button onclick="loadPreview('csv')"
+                            id="preview-btn-csv"
+                            class="px-4 py-2 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-50">
+                        CSV
+                    </button>
+                    <button onclick="loadPreview('md')"
+                            id="preview-btn-md"
+                            class="px-4 py-2 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-50">
+                        Markdown
+                    </button>
+                </div>
+
+                <!-- Preview content -->
+                <div id="preview-content" class="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-auto max-h-96 font-mono text-sm">
+                    <div class="text-slate-400 text-center py-8">Select a format to preview</div>
+                </div>
+
+                <!-- Preview info -->
+                <div id="preview-info" class="mt-2 text-sm text-slate-500 hidden">
+                    Showing <span id="preview-lines">0</span> of <span id="preview-total">0</span> lines
+                    <span id="preview-truncated" class="text-amber-600 hidden">(truncated)</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 p-4 border-t bg-slate-50 rounded-b-lg">
+                <button onclick="this.closest('dialog').close()"
+                        class="px-4 py-2 text-slate-600 hover:text-slate-800">
+                    Cancel
+                </button>
+                <a id="preview-download-link"
+                   href="/compare/export/{{ left.id }}/{{ right.id }}?format=json"
+                   class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    Download
+                </a>
+            </div>
+        </div>
+    </dialog>
+</div>
+
+<script>
+// Handle category content visibility toggle
+document.addEventListener('htmx:afterSwap', function(event) {
+    const target = event.detail.target;
+    if (target.id.includes('-content')) {
+        target.classList.remove('hidden');
+    }
+});
+
+// Preview functionality for export
+let currentFormat = 'json';
+
+function loadPreview(format) {
+    currentFormat = format;
+
+    // Update button styles
+    ['json', 'csv', 'md'].forEach(f => {
+        const btn = document.getElementById(`preview-btn-${f}`);
+        if (f === format) {
+            btn.className = 'px-4 py-2 text-sm rounded border border-amber-300 bg-amber-50 text-amber-700 font-medium';
+        } else {
+            btn.className = 'px-4 py-2 text-sm rounded border border-slate-300 text-slate-600 hover:bg-slate-50';
+        }
+    });
+
+    // Show loading state
+    const contentEl = document.getElementById('preview-content');
+    contentEl.innerHTML = '<div class="text-slate-400 text-center py-8">Loading preview...</div>';
+
+    // Fetch preview
+    fetch(`/compare/api/export/{{ left.id }}/{{ right.id }}/preview?format=${format}&lines=100`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                contentEl.innerHTML = `<div class="text-red-400 text-center py-8">${data.error}</div>`;
+                return;
+            }
+
+            // Display preview with syntax highlighting hints via color
+            const escaped = escapeHtml(data.preview);
+            contentEl.innerHTML = `<pre class="whitespace-pre-wrap">${escaped}</pre>`;
+
+            // Update info
+            document.getElementById('preview-info').classList.remove('hidden');
+            document.getElementById('preview-lines').textContent = data.preview_lines;
+            document.getElementById('preview-total').textContent = data.total_lines;
+
+            const truncatedEl = document.getElementById('preview-truncated');
+            if (data.is_truncated) {
+                truncatedEl.classList.remove('hidden');
+            } else {
+                truncatedEl.classList.add('hidden');
+            }
+
+            // Update download link
+            document.getElementById('preview-download-link').href =
+                `/compare/export/{{ left.id }}/{{ right.id }}?format=${format}`;
+        })
+        .catch(err => {
+            contentEl.innerHTML = `<div class="text-red-400 text-center py-8">Error loading preview: ${err.message}</div>`;
+        });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Load JSON preview by default when modal opens
+document.querySelector('dialog').addEventListener('open', function() {
+    loadPreview('json');
+});
+</script>
+{% endblock %}

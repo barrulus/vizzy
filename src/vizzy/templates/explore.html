@@ -1,17 +1,23 @@
 {% extends "base.html" %}
 
+{% set current_page = 'explore' %}
+
 {% block title %}{{ import_info.name }} - Vizzy{% endblock %}
 
 {% block nav_extra %}
-<div class="flex items-center space-x-4">
-    <span class="text-slate-400">{{ import_info.name }}</span>
+{# Search input in navigation #}
+<div class="nav-search">
+    <svg class="nav-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
     <input type="search"
            placeholder="Search packages..."
-           class="px-3 py-1 rounded bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+           class="nav-search-input"
            hx-get="/search?import_id={{ import_info.id }}"
            hx-trigger="keyup changed delay:300ms"
            hx-target="#search-results"
-           name="q">
+           name="q"
+           aria-label="Search packages">
 </div>
 {% endblock %}
 
@@ -19,14 +25,8 @@
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <!-- Sidebar -->
     <div class="lg:col-span-1 space-y-4">
-        <!-- Breadcrumb -->
-        <div class="bg-white rounded-lg shadow p-4">
-            <nav class="text-sm">
-                <a href="/" class="text-blue-600 hover:underline">Home</a>
-                <span class="mx-2 text-slate-400">/</span>
-                <span class="text-slate-600">{{ import_info.name }}</span>
-            </nav>
-        </div>
+        {# Recent Nodes Panel - populated by cross-view-state.js #}
+        {# The panel is dynamically inserted here by ViewContextUI #}
 
         <!-- Stats -->
         <div class="bg-white rounded-lg shadow p-4">
@@ -43,6 +43,19 @@
             </dl>
         </div>
 
+        <!-- Dashboard Link -->
+        <div class="bg-blue-50 rounded-lg shadow p-4 border border-blue-100">
+            <a href="/dashboard/{{ import_info.id }}"
+               class="flex items-center gap-2 text-blue-700 hover:text-blue-900 font-semibold"
+               data-navigable>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                System Health Dashboard
+            </a>
+        </div>
+
         <!-- Views -->
         <div class="bg-white rounded-lg shadow p-4">
             <h3 class="font-semibold mb-3">Views</h3>
@@ -57,6 +70,12 @@
                     <a href="/module-packages/{{ import_info.id }}"
                        class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
                         Module Packages
+                    </a>
+                </li>
+                <li>
+                    <a href="/treemap/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Closure Treemap
                     </a>
                 </li>
             </ul>
@@ -78,6 +97,18 @@
                         Path Finder
                     </a>
                 </li>
+                <li>
+                    <a href="/analyze/loops/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Circular Dependencies
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze/redundant/{{ import_info.id }}"
+                       class="block p-2 rounded hover:bg-slate-50 text-blue-600 hover:text-blue-800">
+                        Redundant Links
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -88,7 +119,8 @@
                 {% for cluster in clusters %}
                 <li>
                     <a href="/graph/cluster/{{ import_info.id }}/{{ cluster.package_type }}"
-                       class="flex justify-between items-center p-2 rounded hover:bg-slate-50">
+                       class="flex justify-between items-center p-2 rounded hover:bg-slate-50"
+                       data-navigable>
                         <span>{{ cluster.package_type }}</span>
                         <span class="text-slate-400">{{ cluster.node_count }}</span>
                     </a>
@@ -103,10 +135,20 @@
 
     <!-- Main Graph -->
     <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
-        <h2 class="text-lg font-semibold mb-4">Package Type Overview</h2>
-        <p class="text-sm text-slate-500 mb-4">Click a cluster to explore packages of that type.</p>
-        <div class="graph-container border border-slate-200 rounded">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-semibold">Package Type Overview</h2>
+                <p class="text-sm text-slate-500">Click a cluster to explore packages of that type.</p>
+            </div>
+            {% include "partials/share_context.html" %}
+        </div>
+        <div class="graph-container border border-slate-200 rounded"
+             data-semantic-zoom="true"
+             data-import-id="{{ import_info.id }}">
             {{ svg | safe }}
+        </div>
+        <div class="semantic-zoom-info mt-2">
+            <strong>Semantic Zoom:</strong> Scroll to zoom. Content detail changes at different zoom levels.
         </div>
     </div>
 </div>

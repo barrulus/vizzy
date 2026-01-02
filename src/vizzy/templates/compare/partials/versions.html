@@ -1,0 +1,71 @@
+<!-- Version differences partial -->
+<div class="border border-amber-200 rounded p-3 bg-amber-50">
+    <h4 class="text-sm font-semibold text-amber-800 mb-3">
+        Packages with Different Versions
+        <span class="font-normal text-amber-600">({{ total }})</span>
+    </h4>
+
+    {% if diffs %}
+    <ul class="space-y-2 max-h-80 overflow-y-auto">
+        {% for diff in diffs %}
+        <li class="text-sm bg-white rounded p-2 border border-amber-100">
+            <div class="font-medium text-slate-800 truncate mb-1" title="{{ diff.label }}">
+                {{ diff.label }}
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+                {% if diff.left_node %}
+                <a href="/graph/node/{{ diff.left_node.id }}"
+                   class="text-red-600 hover:text-red-800 font-mono truncate max-w-24"
+                   title="{{ diff.left_node.drv_hash }}">
+                    {{ diff.left_node.drv_hash[:8] }}...
+                </a>
+                {% endif %}
+                <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+                {% if diff.right_node %}
+                <a href="/graph/node/{{ diff.right_node.id }}"
+                   class="text-green-600 hover:text-green-800 font-mono truncate max-w-24"
+                   title="{{ diff.right_node.drv_hash }}">
+                    {{ diff.right_node.drv_hash[:8] }}...
+                </a>
+                {% endif %}
+            </div>
+            {% if diff.closure_impact != 0 %}
+            <div class="text-xs mt-1 {% if diff.closure_impact > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                Closure: {% if diff.closure_impact > 0 %}+{% endif %}{{ diff.closure_impact }} deps
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% if pages > 1 %}
+    <div class="flex items-center justify-between mt-3 pt-3 border-t border-amber-200">
+        <span class="text-xs text-amber-600">
+            Page {{ page }} of {{ pages }}
+        </span>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <button class="px-3 py-1 text-xs bg-amber-200 text-amber-800 rounded hover:bg-amber-300 transition"
+                    hx-get="/compare/partials/versions/{{ left_id }}/{{ right_id }}?page={{ page - 1 }}"
+                    hx-target="#version-diffs"
+                    hx-swap="innerHTML">
+                Previous
+            </button>
+            {% endif %}
+            {% if page < pages %}
+            <button class="px-3 py-1 text-xs bg-amber-200 text-amber-800 rounded hover:bg-amber-300 transition"
+                    hx-get="/compare/partials/versions/{{ left_id }}/{{ right_id }}?page={{ page + 1 }}"
+                    hx-target="#version-diffs"
+                    hx-swap="innerHTML">
+                Next
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-sm text-amber-600 italic">No version differences found</p>
+    {% endif %}
+</div>

@@ -1,10 +1,16 @@
-"""Graphviz rendering service"""
+"""Graphviz rendering service with caching for SVG output.
+
+This module handles Graphviz DOT generation and SVG rendering.
+SVG output is cached to avoid re-rendering unchanged graphs.
+"""
 
 import subprocess
 import tempfile
+import hashlib
 from pathlib import Path
 
 from vizzy.models import GraphData, Node, ClusterInfo
+from vizzy.services.cache import cache
 
 
 # Color scheme for package types
@@ -158,8 +164,24 @@ def generate_node_detail_dot(node: Node, dependencies: list[Node], dependents: l
     return "\n".join(lines)
 
 
-def render_dot_to_svg(dot_source: str) -> str:
-    """Render DOT source to SVG using Graphviz"""
+def render_dot_to_svg(dot_source: str, use_cache: bool = True) -> str:
+    """Render DOT source to SVG using Graphviz with optional caching.
+
+    Args:
+        dot_source: The DOT language source to render
+        use_cache: Whether to use cached SVG if available (default True)
+
+    Returns:
+        The rendered SVG as a string
+    """
+    # Generate cache key from DOT source hash
+    if use_cache:
+        source_hash = hashlib.sha256(dot_source.encode()).hexdigest()[:16]
+        cache_key = f"svg:{source_hash}"
+        cached_svg = cache.get(cache_key)
+        if cached_svg is not None:
+            return cached_svg
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".dot", delete=False) as f:
         f.write(dot_source)
         dot_path = Path(f.name)
@@ -175,7 +197,13 @@ def render_dot_to_svg(dot_source: str) -> str:
         if result.returncode != 0:
             raise RuntimeError(f"Graphviz error: {result.stderr}")
 
-        return result.stdout
+        svg = result.stdout
+
+        # Cache the rendered SVG for 10 minutes
+        if use_cache:
+            cache.set(cache_key, svg, ttl=600)
+
+        return svg
     finally:
         dot_path.unlink()
 

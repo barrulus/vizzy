@@ -1,0 +1,1177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ import_info.name }} - Closure Treemap{% endblock %}
+
+{% block head_extra %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+    .treemap-container {
+        position: relative;
+    }
+
+    .treemap-cell {
+        cursor: pointer;
+    }
+
+    .treemap-cell:focus {
+        outline: none;
+    }
+
+    .treemap-cell.keyboard-focus {
+        stroke: #3b82f6 !important;
+        stroke-width: 3px !important;
+    }
+
+    .treemap-cell.keyboard-selected {
+        stroke: #2563eb !important;
+        stroke-width: 4px !important;
+    }
+
+    .treemap-label {
+        pointer-events: none;
+        fill: #1e293b;
+        font-size: 11px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .treemap-label.light-text {
+        fill: #ffffff;
+    }
+
+    .treemap-value {
+        pointer-events: none;
+        fill: #64748b;
+        font-size: 10px;
+    }
+
+    .treemap-value.light-text {
+        fill: rgba(255, 255, 255, 0.8);
+    }
+
+    .treemap-tooltip {
+        position: absolute;
+        background: #1e293b;
+        color: white;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        max-width: 280px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        pointer-events: none;
+        z-index: 100;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    .treemap-tooltip.visible {
+        opacity: 1;
+    }
+
+    .treemap-tooltip h4 {
+        font-weight: 600;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #475569;
+        padding-bottom: 6px;
+    }
+
+    .treemap-tooltip dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 12px;
+    }
+
+    .treemap-tooltip dt {
+        color: #94a3b8;
+    }
+
+    .treemap-tooltip dd {
+        text-align: right;
+        font-weight: 500;
+    }
+
+    .legend-item {
+        cursor: pointer;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .legend-item:hover {
+        opacity: 0.8;
+    }
+
+    .legend-item.active {
+        transform: scale(1.05);
+        font-weight: 600;
+    }
+
+    .legend-item.inactive {
+        opacity: 0.4;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+        text-align: center;
+        padding: 40px;
+        color: #dc2626;
+    }
+
+    /* Filter active indicator */
+    .filter-active {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Keyboard navigation help */
+    .keyboard-hint {
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
+
+    .keyboard-hint kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 0.6875rem;
+        font-family: ui-monospace, monospace;
+        color: #475569;
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Zoom transition indicator */
+    .zoom-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(59, 130, 246, 0.9);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 60;
+        transition: opacity 0.2s ease;
+    }
+
+    .zoom-indicator.visible {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% set current_page = 'treemap' %}
+
+{% block nav_extra %}
+{# Treemap has no search in nav #}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Header with controls -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <!-- Treemap path breadcrumb (internal zoom navigation) -->
+            <nav id="treemap-breadcrumb" class="text-sm flex items-center gap-2" aria-label="Treemap zoom path">
+                <span id="breadcrumb-current" class="text-slate-600">Root</span>
+            </nav>
+
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center gap-3" role="group" aria-label="Treemap controls">
+                <label for="treemap-mode" class="sr-only">Display mode</label>
+                <select id="treemap-mode"
+                        aria-label="Display mode"
+                        class="border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="application" selected>By Application</option>
+                    <option value="type">By Type</option>
+                    <option value="depth">By Depth</option>
+                    <option value="flat">Flat View</option>
+                </select>
+
+                <label for="treemap-filter" class="sr-only">Filter packages</label>
+                <select id="treemap-filter"
+                        aria-label="Filter packages"
+                        class="border border-slate-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all" selected>All Types</option>
+                    <option value="runtime">Runtime Only</option>
+                    <option value="build">Build-time Only</option>
+                    <optgroup label="Package Types" id="filter-package-types">
+                        <!-- Populated via JS -->
+                    </optgroup>
+                </select>
+
+                <button id="treemap-back"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Go back to previous level"
+                        disabled>
+                    <span class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        Back
+                    </span>
+                </button>
+
+                <button id="treemap-reset"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-sm font-medium transition-colors"
+                        title="Reset to root view"
+                        aria-label="Reset view to root level">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treemap Container -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div id="treemap-wrapper"
+             class="treemap-container relative"
+             style="height: 550px;"
+             role="img"
+             aria-label="Interactive treemap visualization of package closure sizes">
+            <div id="treemap-loading"
+                 class="loading-overlay"
+                 aria-label="Loading treemap data"
+                 aria-busy="true">
+                <div class="loading-spinner" aria-hidden="true"></div>
+                <span class="sr-only">Loading treemap...</span>
+            </div>
+            <svg id="treemap-svg"
+                 style="width: 100%; height: 100%;"
+                 role="group"
+                 aria-label="Treemap cells"></svg>
+            <div id="treemap-tooltip" class="treemap-tooltip" role="tooltip" aria-hidden="true"></div>
+            <div id="zoom-indicator" class="zoom-indicator" aria-live="polite"></div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <span class="text-sm font-medium text-slate-600">Legend:</span>
+                <div id="treemap-legend" class="flex flex-wrap gap-3 text-sm">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+            <div class="keyboard-hint hidden sm:flex items-center gap-3">
+                <span><kbd>Arrow</kbd> navigate</span>
+                <span><kbd>Enter</kbd> zoom/open</span>
+                <span><kbd>Esc</kbd> back</span>
+                <span><kbd>Home</kbd> reset</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Treemap configuration
+const importId = {{ import_info.id }};
+const apiBase = '/api/treemap/' + importId;
+
+// Color scheme matching Vizzy patterns
+const packageColors = {
+    'library': '#74c0fc',
+    'application': '#22d3ee',
+    'service': '#69db7c',
+    'development': '#b197fc',
+    'configuration': '#ffd43b',
+    'kernel': '#ff8787',
+    'python-package': '#38d9a9',
+    'perl-package': '#8b5cf6',
+    'font': '#f783ac',
+    'firmware': '#ffa94d',
+    'documentation': '#94a3b8',
+    'bootstrap': '#f472b6',
+    'unknown': '#e2e8f0',
+    'aggregated': '#cbd5e1',
+};
+
+// State management
+let currentData = null;
+let currentRoot = null;  // D3 hierarchy root
+let zoomStack = [];  // Stack of {node_id, name} for navigation
+let currentTooltipNode = null;
+let previousLayout = null;  // For smooth transitions
+
+// Keyboard navigation state
+let selectedCellIndex = -1;
+let navigableCells = [];
+let keyboardNavigationActive = false;
+
+// Animation configuration
+const TRANSITION_DURATION = 400;
+const TRANSITION_EASING = d3.easeCubicInOut;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadPackageTypes();
+    loadTreemap();
+    setupEventListeners();
+
+    // Initialize cross-view state with current import and treemap settings
+    if (window.CrossViewState) {
+        const context = CrossViewState.getContext();
+
+        // Restore saved treemap mode if available
+        if (context.treemapMode) {
+            const modeSelect = document.getElementById('treemap-mode');
+            if (modeSelect) {
+                modeSelect.value = context.treemapMode;
+            }
+        }
+
+        // Restore zoom stack if returning to same import
+        if (context.importId === importId && context.treemapZoomStack && context.treemapZoomStack.length > 0) {
+            zoomStack = context.treemapZoomStack;
+            const lastZoom = zoomStack[zoomStack.length - 1];
+            if (lastZoom && lastZoom.node_id) {
+                loadTreemap(lastZoom.node_id, false);
+            }
+        }
+
+        // Update context
+        CrossViewState.updateContext({
+            importId: importId,
+            nodeId: null  // Clear selected node when viewing treemap
+        });
+    }
+});
+
+// Load package types for filter dropdown
+async function loadPackageTypes() {
+    try {
+        const response = await fetch(`${apiBase}/package-types`);
+        const types = await response.json();
+
+        const optgroup = document.getElementById('filter-package-types');
+        optgroup.innerHTML = types.map(t =>
+            `<option value="type:${t.package_type}">${t.package_type} (${t.count})</option>`
+        ).join('');
+    } catch (error) {
+        console.error('Failed to load package types:', error);
+    }
+}
+
+// Load treemap data with optional smooth transition
+async function loadTreemap(rootNodeId = null, animate = true) {
+    const wrapper = document.getElementById('treemap-wrapper');
+    const loading = document.getElementById('treemap-loading');
+
+    // Save previous layout for transition
+    if (animate && currentRoot) {
+        previousLayout = saveLayout(currentRoot);
+    }
+
+    loading.style.display = 'flex';
+
+    const mode = document.getElementById('treemap-mode').value;
+    const filter = document.getElementById('treemap-filter').value;
+
+    // Update filter indicator
+    updateFilterIndicator(filter);
+
+    let url = `${apiBase}?mode=${mode}&filter_type=${filter}&max_depth=3&limit=20`;
+    if (rootNodeId) {
+        url += `&root_node_id=${rootNodeId}`;
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to load treemap data');
+
+        currentData = await response.json();
+        renderTreemap(currentData, animate && previousLayout !== null);
+        updateBreadcrumb();
+        updateBackButton();
+        updateLegend();
+        resetKeyboardSelection();
+    } catch (error) {
+        console.error('Treemap load error:', error);
+        showError(error.message);
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// Save current layout positions for transitions
+function saveLayout(root) {
+    const layout = new Map();
+    root.leaves().forEach(leaf => {
+        if (leaf.data.node_id) {
+            layout.set(leaf.data.node_id, {
+                x0: leaf.x0,
+                y0: leaf.y0,
+                x1: leaf.x1,
+                y1: leaf.y1,
+            });
+        }
+    });
+    return layout;
+}
+
+// Render treemap using D3.js with smooth transitions
+function renderTreemap(data, animate = false) {
+    const svg = d3.select('#treemap-svg');
+    const wrapper = document.getElementById('treemap-wrapper');
+    const width = wrapper.clientWidth;
+    const height = wrapper.clientHeight;
+
+    // Create hierarchy
+    currentRoot = d3.hierarchy(data)
+        .sum(d => d.value || 0)
+        .sort((a, b) => (b.value || 0) - (a.value || 0));
+
+    // Create treemap layout
+    d3.treemap()
+        .size([width, height])
+        .padding(2)
+        .round(true)(currentRoot);
+
+    // Get leaf nodes
+    const leaves = currentRoot.leaves();
+
+    // Store navigable cells for keyboard navigation
+    navigableCells = leaves.filter(d => d.data.node_id);
+
+    if (animate && previousLayout) {
+        // Animated transition
+        renderWithTransition(svg, leaves, width, height);
+    } else {
+        // Immediate render
+        renderImmediate(svg, leaves);
+    }
+}
+
+// Render with smooth transition animation
+function renderWithTransition(svg, leaves, width, height) {
+    // Show zoom indicator
+    showZoomIndicator(zoomStack.length > 0 ? 'Zooming in...' : 'Loading...');
+
+    const cells = svg.selectAll('g.cell')
+        .data(leaves, d => d.data.node_id || d.data.name);
+
+    // Exit old cells with fade out
+    cells.exit()
+        .transition()
+        .duration(TRANSITION_DURATION / 2)
+        .ease(TRANSITION_EASING)
+        .style('opacity', 0)
+        .remove();
+
+    // Enter new cells
+    const cellsEnter = cells.enter()
+        .append('g')
+        .attr('class', 'cell')
+        .style('opacity', 0);
+
+    // Add rectangles to entering cells
+    cellsEnter.append('rect')
+        .attr('class', 'treemap-cell')
+        .attr('fill', d => getColor(d.data.package_type))
+        .attr('rx', 2)
+        .attr('ry', 2)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1)
+        .attr('tabindex', 0)
+        .attr('role', 'button')
+        .attr('aria-label', d => `${d.data.name}, ${d.value} derivations`)
+        .attr('data-cell-index', (d, i) => i);
+
+    // Merge enter and update selections
+    const cellsMerge = cellsEnter.merge(cells);
+
+    // Animate position changes
+    cellsMerge
+        .transition()
+        .duration(TRANSITION_DURATION)
+        .ease(TRANSITION_EASING)
+        .attr('transform', d => `translate(${d.x0},${d.y0})`)
+        .style('opacity', 1);
+
+    // Animate rectangles
+    cellsMerge.select('rect')
+        .transition()
+        .duration(TRANSITION_DURATION)
+        .ease(TRANSITION_EASING)
+        .attr('width', d => Math.max(0, d.x1 - d.x0))
+        .attr('height', d => Math.max(0, d.y1 - d.y0));
+
+    // Re-add event listeners
+    cellsMerge.select('rect')
+        .on('click', (event, d) => handleCellClick(d))
+        .on('mouseenter', (event, d) => showTooltip(event, d))
+        .on('mousemove', (event) => moveTooltip(event))
+        .on('mouseleave', () => hideTooltip())
+        .on('focus', (event, d) => {
+            const index = navigableCells.indexOf(d);
+            if (index >= 0) {
+                selectCell(index, false);
+            }
+        })
+        .on('blur', () => {
+            if (!keyboardNavigationActive) {
+                clearCellSelection();
+            }
+        });
+
+    // Update labels after transition
+    setTimeout(() => {
+        updateLabels(svg, leaves);
+        hideZoomIndicator();
+    }, TRANSITION_DURATION);
+}
+
+// Immediate render without animation
+function renderImmediate(svg, leaves) {
+    // Clear previous content
+    svg.selectAll('*').remove();
+
+    // Create groups for each leaf node
+    const cells = svg.selectAll('g.cell')
+        .data(leaves, d => d.data.node_id || d.data.name)
+        .join('g')
+        .attr('class', 'cell')
+        .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+    // Add rectangles
+    cells.append('rect')
+        .attr('class', 'treemap-cell')
+        .attr('width', d => d.x1 - d.x0)
+        .attr('height', d => d.y1 - d.y0)
+        .attr('fill', d => getColor(d.data.package_type))
+        .attr('rx', 2)
+        .attr('ry', 2)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1)
+        .attr('tabindex', 0)
+        .attr('role', 'button')
+        .attr('aria-label', d => `${d.data.name}, ${d.value} derivations`)
+        .attr('data-cell-index', (d, i) => i)
+        .on('click', (event, d) => handleCellClick(d))
+        .on('mouseenter', (event, d) => showTooltip(event, d))
+        .on('mousemove', (event) => moveTooltip(event))
+        .on('mouseleave', () => hideTooltip())
+        .on('focus', (event, d) => {
+            const index = navigableCells.indexOf(d);
+            if (index >= 0) {
+                selectCell(index, false);
+            }
+        })
+        .on('blur', () => {
+            if (!keyboardNavigationActive) {
+                clearCellSelection();
+            }
+        });
+
+    // Add labels
+    updateLabels(svg, leaves);
+}
+
+// Update text labels on cells
+function updateLabels(svg, leaves) {
+    // Remove existing labels
+    svg.selectAll('.treemap-label, .treemap-value').remove();
+
+    // Add labels for larger cells
+    svg.selectAll('g.cell').each(function(d) {
+        const cellWidth = d.x1 - d.x0;
+        const cellHeight = d.y1 - d.y0;
+        const g = d3.select(this);
+
+        // Only add text if cell is large enough
+        if (cellWidth > 50 && cellHeight > 30) {
+            const isLight = isLightColor(getColor(d.data.package_type));
+
+            // Package name
+            g.append('text')
+                .attr('class', `treemap-label ${isLight ? '' : 'light-text'}`)
+                .attr('x', 6)
+                .attr('y', 16)
+                .text(truncateText(d.data.name, cellWidth - 12));
+
+            // Value (closure size)
+            if (cellHeight > 40) {
+                g.append('text')
+                    .attr('class', `treemap-value ${isLight ? '' : 'light-text'}`)
+                    .attr('x', 6)
+                    .attr('y', 30)
+                    .text(formatNumber(d.value));
+            }
+        }
+    });
+}
+
+// Zoom indicator functions
+function showZoomIndicator(text) {
+    const indicator = document.getElementById('zoom-indicator');
+    indicator.textContent = text;
+    indicator.classList.add('visible');
+}
+
+function hideZoomIndicator() {
+    const indicator = document.getElementById('zoom-indicator');
+    indicator.classList.remove('visible');
+}
+
+// Update filter dropdown visual indicator
+function updateFilterIndicator(filter) {
+    const filterEl = document.getElementById('treemap-filter');
+    if (filter !== 'all') {
+        filterEl.classList.add('filter-active');
+    } else {
+        filterEl.classList.remove('filter-active');
+    }
+}
+
+// Get color for package type
+function getColor(packageType) {
+    return packageColors[packageType] || packageColors['unknown'];
+}
+
+// Check if a color is light (for text contrast)
+function isLightColor(hex) {
+    const rgb = parseInt(hex.slice(1), 16);
+    const r = (rgb >> 16) & 0xff;
+    const g = (rgb >> 8) & 0xff;
+    const b = rgb & 0xff;
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 150;
+}
+
+// Truncate text to fit width
+function truncateText(text, maxWidth) {
+    const avgCharWidth = 7;
+    const maxChars = Math.floor(maxWidth / avgCharWidth);
+    if (text.length <= maxChars) return text;
+    return text.slice(0, maxChars - 3) + '...';
+}
+
+// Format number with commas
+function formatNumber(num) {
+    return num ? num.toLocaleString() : '0';
+}
+
+// Handle cell click with zoom animation
+function handleCellClick(d) {
+    const nodeId = d.data.node_id;
+
+    if (nodeId && !d.data.name.includes('others')) {
+        // If it's a parent with children, zoom into it
+        if (d.parent && d.depth > 0) {
+            showZoomIndicator(`Zooming into ${d.data.name}...`);
+            zoomStack.push({
+                node_id: nodeId,
+                name: d.data.name
+            });
+            loadTreemap(nodeId, true);
+
+            // Sync zoom stack to cross-view state
+            if (window.CrossViewState) {
+                CrossViewState.updateContext({
+                    treemapZoomStack: [...zoomStack]
+                });
+            }
+        } else {
+            // Leaf node - navigate to node detail
+            if (window.CrossViewState) {
+                CrossViewState.navigateToNode(nodeId, importId);
+            } else {
+                window.location.href = `/graph/node/${nodeId}`;
+            }
+        }
+    }
+}
+
+// Keyboard navigation functions
+function selectCell(index, scrollIntoView = true) {
+    if (index < 0 || index >= navigableCells.length) return;
+
+    clearCellSelection();
+    selectedCellIndex = index;
+    keyboardNavigationActive = true;
+
+    const cellData = navigableCells[index];
+    const svg = d3.select('#treemap-svg');
+
+    // Find and highlight the cell
+    svg.selectAll('g.cell').each(function(d) {
+        if (d === cellData) {
+            d3.select(this).select('rect')
+                .classed('keyboard-selected', true);
+
+            // Show tooltip for selected cell
+            const rect = this.getBoundingClientRect();
+            const wrapper = document.getElementById('treemap-wrapper');
+            const wrapperRect = wrapper.getBoundingClientRect();
+
+            showTooltipAtPosition(cellData,
+                rect.left - wrapperRect.left + rect.width / 2,
+                rect.top - wrapperRect.top + rect.height / 2
+            );
+        }
+    });
+}
+
+function clearCellSelection() {
+    d3.selectAll('.treemap-cell').classed('keyboard-selected', false).classed('keyboard-focus', false);
+    selectedCellIndex = -1;
+    hideTooltip();
+}
+
+function resetKeyboardSelection() {
+    clearCellSelection();
+    keyboardNavigationActive = false;
+}
+
+function navigateToCell(direction) {
+    if (navigableCells.length === 0) return;
+
+    keyboardNavigationActive = true;
+    let newIndex;
+
+    if (selectedCellIndex < 0) {
+        // No selection, start at first cell
+        newIndex = 0;
+    } else {
+        const currentCell = navigableCells[selectedCellIndex];
+        const currentCenterX = (currentCell.x0 + currentCell.x1) / 2;
+        const currentCenterY = (currentCell.y0 + currentCell.y1) / 2;
+
+        // Find the best cell in the direction
+        let bestIndex = -1;
+        let bestScore = Infinity;
+
+        navigableCells.forEach((cell, index) => {
+            if (index === selectedCellIndex) return;
+
+            const cellCenterX = (cell.x0 + cell.x1) / 2;
+            const cellCenterY = (cell.y0 + cell.y1) / 2;
+
+            const dx = cellCenterX - currentCenterX;
+            const dy = cellCenterY - currentCenterY;
+
+            let isInDirection = false;
+            let distance;
+
+            switch (direction) {
+                case 'up':
+                    isInDirection = dy < -10;
+                    distance = Math.abs(dx) + Math.abs(dy) * 0.5;
+                    break;
+                case 'down':
+                    isInDirection = dy > 10;
+                    distance = Math.abs(dx) + Math.abs(dy) * 0.5;
+                    break;
+                case 'left':
+                    isInDirection = dx < -10;
+                    distance = Math.abs(dx) * 0.5 + Math.abs(dy);
+                    break;
+                case 'right':
+                    isInDirection = dx > 10;
+                    distance = Math.abs(dx) * 0.5 + Math.abs(dy);
+                    break;
+            }
+
+            if (isInDirection && distance < bestScore) {
+                bestScore = distance;
+                bestIndex = index;
+            }
+        });
+
+        newIndex = bestIndex >= 0 ? bestIndex : selectedCellIndex;
+    }
+
+    selectCell(newIndex);
+}
+
+function activateSelectedCell() {
+    if (selectedCellIndex >= 0 && selectedCellIndex < navigableCells.length) {
+        const cellData = navigableCells[selectedCellIndex];
+        handleCellClick(cellData);
+    }
+}
+
+// Tooltip functions
+function showTooltip(event, d) {
+    const tooltip = document.getElementById('treemap-tooltip');
+    currentTooltipNode = d;
+
+    tooltip.innerHTML = buildTooltipContent(d);
+    tooltip.classList.add('visible');
+    moveTooltip(event);
+}
+
+function showTooltipAtPosition(d, x, y) {
+    const tooltip = document.getElementById('treemap-tooltip');
+    currentTooltipNode = d;
+
+    tooltip.innerHTML = buildTooltipContent(d);
+    tooltip.classList.add('visible');
+
+    const wrapper = document.getElementById('treemap-wrapper');
+
+    // Position tooltip near the cell
+    let tooltipX = x + 15;
+    let tooltipY = y + 15;
+
+    // Keep tooltip within bounds
+    if (tooltipX + tooltip.offsetWidth > wrapper.clientWidth) {
+        tooltipX = x - tooltip.offsetWidth - 15;
+    }
+    if (tooltipY + tooltip.offsetHeight > wrapper.clientHeight) {
+        tooltipY = y - tooltip.offsetHeight - 15;
+    }
+
+    tooltip.style.left = tooltipX + 'px';
+    tooltip.style.top = tooltipY + 'px';
+}
+
+function buildTooltipContent(d) {
+    return `
+        <h4>${d.data.name}</h4>
+        <dl>
+            <dt>Closure size</dt>
+            <dd>${formatNumber(d.value)}</dd>
+            ${d.data.unique_contribution !== null && d.data.unique_contribution !== undefined ? `
+                <dt>Unique contribution</dt>
+                <dd>${formatNumber(d.data.unique_contribution)}</dd>
+            ` : ''}
+            ${d.data.package_type ? `
+                <dt>Type</dt>
+                <dd>${d.data.package_type}</dd>
+            ` : ''}
+        </dl>
+        <p style="margin-top: 8px; font-size: 11px; color: #94a3b8;">
+            ${d.data.node_id ? 'Press Enter to zoom in or navigate' : 'Aggregated packages'}
+        </p>
+    `;
+}
+
+function moveTooltip(event) {
+    const tooltip = document.getElementById('treemap-tooltip');
+    const wrapper = document.getElementById('treemap-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+
+    let x = event.clientX - rect.left + 15;
+    let y = event.clientY - rect.top + 15;
+
+    // Keep tooltip within bounds
+    if (x + tooltip.offsetWidth > rect.width) {
+        x = event.clientX - rect.left - tooltip.offsetWidth - 15;
+    }
+    if (y + tooltip.offsetHeight > rect.height) {
+        y = event.clientY - rect.top - tooltip.offsetHeight - 15;
+    }
+
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+    const tooltip = document.getElementById('treemap-tooltip');
+    tooltip.classList.remove('visible');
+    currentTooltipNode = null;
+}
+
+// Update breadcrumb navigation
+function updateBreadcrumb() {
+    const currentSpan = document.getElementById('breadcrumb-current');
+
+    if (zoomStack.length === 0) {
+        currentSpan.textContent = 'Treemap';
+    } else {
+        currentSpan.innerHTML = `<a href="/treemap/{{ import_info.id }}" class="text-blue-600 hover:underline" onclick="resetView(); return false;">Treemap</a>`;
+
+        zoomStack.forEach((z, i) => {
+            if (i < zoomStack.length - 1) {
+                currentSpan.innerHTML += ` <span class="text-slate-400">&gt;</span>
+                    <a href="#" class="text-blue-600 hover:underline" onclick="zoomTo(${i}); return false;">${z.name}</a>`;
+            } else {
+                currentSpan.innerHTML += ` <span class="text-slate-400">&gt;</span>
+                    <span class="text-slate-600">${z.name}</span>`;
+            }
+        });
+    }
+}
+
+// Update back button state
+function updateBackButton() {
+    const backBtn = document.getElementById('treemap-back');
+    backBtn.disabled = zoomStack.length === 0;
+}
+
+// Update legend based on current data
+function updateLegend() {
+    const legend = document.getElementById('treemap-legend');
+    const filter = document.getElementById('treemap-filter').value;
+    const typeCounts = {};
+
+    // Count types in current view
+    function countTypes(node) {
+        if (node.package_type && node.package_type !== 'aggregated') {
+            typeCounts[node.package_type] = (typeCounts[node.package_type] || 0) + 1;
+        }
+        if (node.children) {
+            node.children.forEach(countTypes);
+        }
+    }
+
+    if (currentData) {
+        countTypes(currentData);
+    }
+
+    // Build legend items with active state
+    legend.innerHTML = Object.entries(typeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, count]) => {
+            const isActive = filter === `type:${type}`;
+            return `
+                <button class="legend-item flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-50 ${isActive ? 'active bg-blue-50' : ''}"
+                        onclick="toggleTypeFilter('${type}')"
+                        title="Click to filter by ${type}">
+                    <span class="w-3 h-3 rounded" style="background: ${getColor(type)}"></span>
+                    ${type} (${count})
+                </button>
+            `;
+        }).join('');
+}
+
+// Toggle type filter from legend
+function toggleTypeFilter(type) {
+    const filter = document.getElementById('treemap-filter');
+    const currentValue = filter.value;
+
+    if (currentValue === `type:${type}`) {
+        filter.value = 'all';
+    } else {
+        filter.value = `type:${type}`;
+    }
+
+    loadTreemap(zoomStack.length > 0 ? zoomStack[zoomStack.length - 1].node_id : null, true);
+}
+
+// Navigate back in zoom stack with animation
+function goBack() {
+    if (zoomStack.length > 0) {
+        showZoomIndicator('Zooming out...');
+        zoomStack.pop();
+        const newRoot = zoomStack.length > 0 ? zoomStack[zoomStack.length - 1].node_id : null;
+        loadTreemap(newRoot, true);
+
+        // Sync zoom stack to cross-view state
+        if (window.CrossViewState) {
+            CrossViewState.updateContext({
+                treemapZoomStack: [...zoomStack]
+            });
+        }
+    }
+}
+
+// Zoom to a specific level in the stack
+function zoomTo(index) {
+    showZoomIndicator('Navigating...');
+    zoomStack = zoomStack.slice(0, index + 1);
+    loadTreemap(zoomStack[index].node_id, true);
+
+    // Sync zoom stack to cross-view state
+    if (window.CrossViewState) {
+        CrossViewState.updateContext({
+            treemapZoomStack: [...zoomStack]
+        });
+    }
+}
+
+// Reset to root view
+function resetView() {
+    if (zoomStack.length > 0) {
+        showZoomIndicator('Resetting view...');
+    }
+    zoomStack = [];
+    previousLayout = null;
+    loadTreemap(null, true);
+
+    // Clear zoom stack in cross-view state
+    if (window.CrossViewState) {
+        CrossViewState.updateContext({
+            treemapZoomStack: []
+        });
+    }
+}
+
+// Show error message
+function showError(message) {
+    const svg = document.getElementById('treemap-svg');
+    svg.innerHTML = `
+        <foreignObject width="100%" height="100%">
+            <div class="error-message">
+                <p>Failed to load treemap data</p>
+                <p style="font-size: 14px; color: #64748b; margin-top: 8px;">${message}</p>
+                <button onclick="loadTreemap()"
+                        style="margin-top: 16px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    Retry
+                </button>
+            </div>
+        </foreignObject>
+    `;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Mode change - also sync to cross-view state
+    document.getElementById('treemap-mode').addEventListener('change', (e) => {
+        zoomStack = [];
+        previousLayout = null;
+        loadTreemap(null, false);
+
+        // Sync mode to cross-view state
+        if (window.CrossViewState) {
+            CrossViewState.updateContext({
+                treemapMode: e.target.value,
+                treemapZoomStack: []
+            });
+        }
+    });
+
+    // Filter change
+    document.getElementById('treemap-filter').addEventListener('change', () => {
+        loadTreemap(zoomStack.length > 0 ? zoomStack[zoomStack.length - 1].node_id : null, true);
+    });
+
+    // Back button
+    document.getElementById('treemap-back').addEventListener('click', goBack);
+
+    // Reset button
+    document.getElementById('treemap-reset').addEventListener('click', resetView);
+
+    // Resize handler
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (currentData) {
+                renderTreemap(currentData, false);
+            }
+        }, 150);
+    });
+
+    // Comprehensive keyboard navigation
+    document.addEventListener('keydown', (event) => {
+        // Skip if in input, textarea, or select
+        const target = event.target;
+        if (target.matches('input, textarea, select, [contenteditable="true"]')) {
+            return;
+        }
+
+        switch (event.key) {
+            case 'Escape':
+                event.preventDefault();
+                if (keyboardNavigationActive) {
+                    resetKeyboardSelection();
+                } else if (zoomStack.length > 0) {
+                    goBack();
+                }
+                break;
+
+            case 'Home':
+                event.preventDefault();
+                resetView();
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                navigateToCell('up');
+                break;
+
+            case 'ArrowDown':
+                event.preventDefault();
+                navigateToCell('down');
+                break;
+
+            case 'ArrowLeft':
+                event.preventDefault();
+                navigateToCell('left');
+                break;
+
+            case 'ArrowRight':
+                event.preventDefault();
+                navigateToCell('right');
+                break;
+
+            case 'Enter':
+            case ' ':
+                if (keyboardNavigationActive && selectedCellIndex >= 0) {
+                    event.preventDefault();
+                    activateSelectedCell();
+                }
+                break;
+
+            case 'Tab':
+                // Allow default tab behavior but track that we're leaving keyboard nav
+                if (keyboardNavigationActive) {
+                    resetKeyboardSelection();
+                }
+                break;
+
+            case 'Backspace':
+                // Alternative for going back
+                if (zoomStack.length > 0 && !event.ctrlKey && !event.metaKey) {
+                    event.preventDefault();
+                    goBack();
+                }
+                break;
+
+            // Quick filter shortcuts
+            case 'r':
+                // Toggle runtime filter
+                if (!event.ctrlKey && !event.metaKey) {
+                    const filter = document.getElementById('treemap-filter');
+                    filter.value = filter.value === 'runtime' ? 'all' : 'runtime';
+                    filter.dispatchEvent(new Event('change'));
+                }
+                break;
+
+            case 'b':
+                // Toggle build-time filter
+                if (!event.ctrlKey && !event.metaKey) {
+                    const filter = document.getElementById('treemap-filter');
+                    filter.value = filter.value === 'build' ? 'all' : 'build';
+                    filter.dispatchEvent(new Event('change'));
+                }
+                break;
+        }
+    });
+
+    // Click outside treemap clears keyboard selection
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('#treemap-wrapper')) {
+            resetKeyboardSelection();
+        }
+    });
+}
+</script>
+{% endblock %}

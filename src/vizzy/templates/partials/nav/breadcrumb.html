@@ -1,0 +1,88 @@
+{#
+   Breadcrumb Navigation Component
+   Phase 8H-001: Unified navigation system
+
+   Usage:
+   {% include "partials/nav/breadcrumb.html" %}
+
+   Required context variables:
+   - breadcrumbs: list of dicts with 'label', 'url', and optional 'icon'
+     Example: [
+       {'label': 'Home', 'url': '/', 'icon': 'home'},
+       {'label': 'Import Name', 'url': '/explore/1'},
+       {'label': 'Current Page'}  # No URL = current page
+     ]
+
+   Or use import_info and current_page:
+   - import_info: Import object with id and name
+   - current_page: String name of current page
+   - node: Optional node object for node-specific breadcrumbs
+#}
+
+<nav class="breadcrumb-container" aria-label="Breadcrumb navigation">
+    <ol class="breadcrumb" role="list">
+        {# Home link with icon #}
+        <li class="breadcrumb-item">
+            <a href="/" class="breadcrumb-link" aria-label="Home">
+                <svg class="breadcrumb-home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span class="sr-only">Home</span>
+            </a>
+        </li>
+
+        {% if breadcrumbs %}
+            {# Use explicit breadcrumbs list #}
+            {% for item in breadcrumbs %}
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                    {% if item.url %}
+                        <a href="{{ item.url }}" class="breadcrumb-link">{{ item.label }}</a>
+                    {% else %}
+                        <span class="breadcrumb-current" aria-current="page">{{ item.label }}</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        {% elif import_info %}
+            {# Build breadcrumbs from import_info context #}
+            <li class="breadcrumb-item">
+                <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                {% if current_page != 'explore' %}
+                    <a href="/explore/{{ import_info.id }}" class="breadcrumb-link">{{ import_info.name }}</a>
+                {% else %}
+                    <span class="breadcrumb-current" aria-current="page">{{ import_info.name }}</span>
+                {% endif %}
+            </li>
+
+            {% if node %}
+                {# Node-specific breadcrumb #}
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                    {% if node.package_type and current_page != 'cluster' %}
+                        <a href="/graph/cluster/{{ import_info.id }}/{{ node.package_type }}" class="breadcrumb-link">{{ node.package_type }}</a>
+                    {% endif %}
+                </li>
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                    {% if current_page != 'node' %}
+                        <a href="/graph/node/{{ node.id }}" class="breadcrumb-link" title="{{ node.label }}">
+                            {{ node.label[:30] }}{% if node.label|length > 30 %}...{% endif %}
+                        </a>
+                    {% else %}
+                        <span class="breadcrumb-current" aria-current="page" title="{{ node.label }}">
+                            {{ node.label[:30] }}{% if node.label|length > 30 %}...{% endif %}
+                        </span>
+                    {% endif %}
+                </li>
+            {% endif %}
+
+            {% if current_page and current_page not in ['explore', 'node', 'cluster'] %}
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                    <span class="breadcrumb-current" aria-current="page">{{ current_page }}</span>
+                </li>
+            {% endif %}
+        {% endif %}
+    </ol>
+</nav>

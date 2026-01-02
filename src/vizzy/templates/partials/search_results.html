@@ -1,11 +1,13 @@
 {% if results %}
-<div class="bg-white rounded-lg shadow p-4">
-    <h3 class="font-semibold mb-3">Search Results</h3>
-    <ul class="space-y-1 text-sm">
+<div class="bg-white rounded-lg shadow p-4" data-url-state='{"q": "{{ query }}"}'>
+    <h3 class="font-semibold mb-3">Search Results <span class="text-slate-400 font-normal text-xs">(j/k to navigate)</span></h3>
+    <ul class="node-list space-y-1 text-sm">
         {% for node in results %}
         <li>
             <a href="/graph/node/{{ node.id }}"
-               class="block p-2 rounded hover:bg-slate-50">
+               data-node-id="{{ node.id }}"
+               class="block p-2 rounded hover:bg-slate-50"
+               data-navigable>
                 <div class="font-medium truncate" title="{{ node.label }}">{{ node.label }}</div>
                 <div class="text-xs text-slate-400">{{ node.package_type }}</div>
             </a>

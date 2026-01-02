@@ -1,0 +1,672 @@
+/* =============================================================================
+   Unified Navigation System Styles
+   Phase 8H-001: Create unified navigation system
+   ============================================================================= */
+
+/* =============================================================================
+   Primary Navigation Bar
+   ============================================================================= */
+
+.nav-primary {
+    background-color: #1e293b;
+    color: white;
+    padding: 0.75rem 1rem;
+}
+
+.nav-primary-container {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+}
+
+.nav-brand:hover {
+    opacity: 0.9;
+}
+
+/* =============================================================================
+   Navigation Links
+   ============================================================================= */
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover,
+.nav-link:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.nav-link:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-weight: 500;
+}
+
+.nav-link-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+.nav-separator {
+    color: #475569;
+    font-size: 0.75rem;
+    padding: 0 0.25rem;
+}
+
+/* =============================================================================
+   Context Navigation (Import/Host context)
+   ============================================================================= */
+
+.nav-context {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid #334155;
+    margin-left: 0.5rem;
+}
+
+.nav-context-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.nav-context-value {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* =============================================================================
+   Quick Actions Dropdown
+   ============================================================================= */
+
+.nav-quick-actions {
+    position: relative;
+}
+
+.nav-quick-actions-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    background: none;
+    border: 1px solid #475569;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-quick-actions-btn:hover,
+.nav-quick-actions-btn:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #64748b;
+    color: white;
+}
+
+.nav-quick-actions-btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.nav-quick-actions-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    width: 16rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.nav-quick-actions-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.nav-quick-actions-section {
+    padding: 0.5rem;
+}
+
+.nav-quick-actions-section:not(:last-child) {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.nav-quick-actions-label {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.nav-quick-action {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s ease;
+}
+
+.nav-quick-action:hover,
+.nav-quick-action:focus {
+    background-color: #f1f5f9;
+    outline: none;
+}
+
+.nav-quick-action-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.nav-quick-action-text {
+    flex: 1;
+}
+
+.nav-quick-action-desc {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* =============================================================================
+   Search in Navigation
+   ============================================================================= */
+
+.nav-search {
+    position: relative;
+    flex: 1;
+    max-width: 20rem;
+}
+
+.nav-search-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+    font-size: 0.875rem;
+    color: white;
+    background-color: #334155;
+    border: 1px solid #475569;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-search-input::placeholder {
+    color: #94a3b8;
+}
+
+.nav-search-input:hover {
+    background-color: #3d4a5c;
+}
+
+.nav-search-input:focus {
+    outline: none;
+    background-color: #3d4a5c;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.nav-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: #64748b;
+    pointer-events: none;
+}
+
+/* =============================================================================
+   Help/Keyboard Shortcuts Button
+   ============================================================================= */
+
+.nav-help-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    color: #94a3b8;
+    background: none;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.nav-help-btn:hover,
+.nav-help-btn:focus {
+    color: white;
+}
+
+.nav-help-btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.nav-help-kbd {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.6875rem;
+    font-family: ui-monospace, monospace;
+    color: #cbd5e1;
+    background-color: #475569;
+    border: 1px solid #64748b;
+    border-radius: 0.25rem;
+}
+
+.nav-help-text {
+    font-size: 0.875rem;
+}
+
+/* =============================================================================
+   Breadcrumb Navigation
+   ============================================================================= */
+
+.breadcrumb-container {
+    background-color: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+}
+
+.breadcrumb {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.breadcrumb-link {
+    color: #3b82f6;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.breadcrumb-link:hover,
+.breadcrumb-link:focus {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.breadcrumb-link:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 0.125rem;
+}
+
+.breadcrumb-separator {
+    color: #9ca3af;
+    margin: 0 0.25rem;
+}
+
+.breadcrumb-current {
+    color: #64748b;
+    font-weight: 500;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Breadcrumb with icon */
+.breadcrumb-home-icon {
+    width: 1rem;
+    height: 1rem;
+    color: #6b7280;
+}
+
+/* =============================================================================
+   Secondary Navigation (Tab-style)
+   ============================================================================= */
+
+.nav-secondary {
+    background-color: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 1rem;
+}
+
+.nav-secondary-container {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.nav-secondary-container::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-secondary-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #64748b;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-secondary-link:hover {
+    color: #1e293b;
+}
+
+.nav-secondary-link:focus {
+    outline: none;
+    color: #1e293b;
+    background-color: #f8fafc;
+}
+
+.nav-secondary-link.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    font-weight: 500;
+}
+
+.nav-secondary-link-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Mobile Navigation
+   ============================================================================= */
+
+.nav-mobile-toggle {
+    display: none;
+    padding: 0.5rem;
+    color: #cbd5e1;
+    background: none;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.nav-mobile-toggle:hover,
+.nav-mobile-toggle:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.nav-mobile-toggle-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .nav-mobile-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #1e293b;
+        padding: 0.5rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+        border-top: 1px solid #334155;
+    }
+
+    .nav-links.open {
+        display: flex;
+    }
+
+    .nav-link {
+        justify-content: flex-start;
+        padding: 0.75rem 1rem;
+    }
+
+    .nav-separator {
+        display: none;
+    }
+
+    .nav-context {
+        border-left: none;
+        margin-left: 0;
+        padding-left: 0;
+        padding-top: 0.5rem;
+        border-top: 1px solid #334155;
+        margin-top: 0.5rem;
+    }
+
+    .nav-search {
+        max-width: none;
+        order: -1;
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcrumb {
+        font-size: 0.8125rem;
+    }
+
+    .breadcrumb-current {
+        max-width: 150px;
+    }
+
+    .nav-secondary-container {
+        gap: 0;
+    }
+
+    .nav-secondary-link {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+}
+
+/* =============================================================================
+   Quick Navigation Panel (Sidebar-style for certain views)
+   ============================================================================= */
+
+.quick-nav-panel {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+}
+
+.quick-nav-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.quick-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.quick-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #3b82f6;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s ease;
+}
+
+.quick-nav-item:hover,
+.quick-nav-item:focus {
+    background-color: #f1f5f9;
+    outline: none;
+}
+
+.quick-nav-item.active {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-weight: 500;
+}
+
+.quick-nav-item-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: #64748b;
+}
+
+.quick-nav-item.active .quick-nav-item-icon {
+    color: #2563eb;
+}
+
+/* =============================================================================
+   Skip Link (Accessibility)
+   ============================================================================= */
+
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    padding: 0.75rem 1rem;
+    background-color: #1e293b;
+    color: white;
+    text-decoration: none;
+    z-index: 100;
+    transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* =============================================================================
+   Navigation State Indicators
+   ============================================================================= */
+
+.nav-loading {
+    position: relative;
+}
+
+.nav-loading::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    animation: nav-loading-slide 1s ease-in-out infinite;
+}
+
+@keyframes nav-loading-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Current page indicator */
+.nav-current-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: #22c55e;
+    border-radius: 50%;
+    margin-left: 0.375rem;
+}
+
+/* =============================================================================
+   Print Styles
+   ============================================================================= */
+
+@media print {
+    .nav-primary,
+    .nav-secondary,
+    .nav-quick-actions,
+    .nav-search,
+    .nav-help-btn,
+    .skip-link {
+        display: none !important;
+    }
+
+    .breadcrumb-container {
+        border-bottom: none;
+        padding: 0;
+        margin-bottom: 1rem;
+    }
+
+    .breadcrumb-link {
+        color: #374151;
+    }
+}

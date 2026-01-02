@@ -1,0 +1,63 @@
+{# Partial template for package type distribution - loaded via HTMX #}
+{% if types %}
+<div class="type-distribution-container">
+    {# SVG Donut Chart #}
+    <div class="flex justify-center mb-4">
+        <svg viewBox="0 0 100 100" width="160" height="160" class="type-donut-chart" role="img" aria-label="Package type distribution chart">
+            <title>Package type distribution</title>
+            {# Background circle #}
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" stroke-width="20"/>
+
+            {# Data segments - these will be properly calculated by the API #}
+            {% set offset = 0 %}
+            {% for type_data in types %}
+                {% set segment_length = type_data.percentage * 2.51327 %}
+                {% set stroke_color = {
+                    'library': '#74c0fc',
+                    'application': '#22d3ee',
+                    'service': '#69db7c',
+                    'development': '#b197fc',
+                    'configuration': '#ffd43b'
+                }.get(type_data.type, '#94a3b8') %}
+                <circle cx="50" cy="50" r="40"
+                        fill="none"
+                        stroke="{{ stroke_color }}"
+                        stroke-width="20"
+                        stroke-dasharray="{{ segment_length }} 251.327"
+                        stroke-dashoffset="{{ -offset }}"
+                        transform="rotate(-90 50 50)"
+                        class="donut-segment"
+                        data-type="{{ type_data.type }}">
+                    <title>{{ type_data.type }}: {{ type_data.count }} ({{ type_data.percentage }}%)</title>
+                </circle>
+                {% set offset = offset + segment_length %}
+            {% endfor %}
+
+            {# Center text #}
+            <text x="50" y="46" text-anchor="middle" class="text-2xl font-bold fill-slate-700" font-size="12">{{ total }}</text>
+            <text x="50" y="58" text-anchor="middle" class="text-xs fill-slate-500" font-size="6">packages</text>
+        </svg>
+    </div>
+
+    {# Legend #}
+    <div class="type-legend" role="list" aria-label="Package type breakdown">
+        {% for type_data in types %}
+        <a href="/graph/cluster/{{ import_id }}/{{ type_data.type }}"
+           class="type-legend-item"
+           role="listitem"
+           data-navigable>
+            <span class="type-legend-swatch type-{{ type_data.type }}"></span>
+            <span class="type-legend-label">{{ type_data.type }}</span>
+            <span class="type-legend-value">{{ "{:,}".format(type_data.count) }} ({{ type_data.percentage }}%)</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="flex flex-col items-center justify-center h-48 text-slate-500">
+    <svg class="w-12 h-12 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <p class="text-sm">No type distribution data available</p>
+</div>
+{% endif %}
